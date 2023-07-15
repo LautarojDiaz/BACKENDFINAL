@@ -1,25 +1,42 @@
 const express = require('express');
 const path = require('path');
-const ProductManager = require('./ProductManager');
-const Cart = require('./Cart');
+const ProductManager = require('./controllers/ProductManager');
+const Cart = require('./models/Cart');
 const CartManager = require('./CartManager');
+const exphbs = require('express-handlebars');
+const http = require('http');
+const socketIO = require('socket.io');
 
 const app = express();
-const productManager = new ProductManager(path.join(__dirname, 'data/products.json'));
+const productManager = new ProductManager(path.join(__dirname, '/../data/products.json'));
 const cartManager = new CartManager();
 
-
-  /* INFORMACION DEL INDEX */
+/* INFORMACION DEL INDEX */
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'routes', 'index.html'));
 });
 
+/* HANDLEBARS */
+const hbs = exphbs.create({
+  defaultLayout: 'main',
+  layoutsDir: path.join(__dirname, 'views/layouts'),
+  partialsDir: path.join(__dirname, 'views/partials')
+});
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
+app.set('views', path.join(__dirname, 'views'));
 
-  /* RUTA /api/products */
+/* EVENTOS Socket.IO */
+const server = http.createServer(app);
+const io = socketIO(server);
+io.on('connection', (socket) => {
+  console.log('Cliente conectado');
+});
+
+/* RUTA /api/products */
 const productRouter = express.Router();
 
-
-  /* OBTIENE LOS PRODUCTOS */
+/* OBTIENE LOS PRODUCTOS */
 productRouter.get('/', async (req, res) => {
   try {
     const limit = req.query.limit;
@@ -34,8 +51,7 @@ productRouter.get('/', async (req, res) => {
   }
 });
 
-
-  /* PRODUCTO X ID */
+/* PRODUCTO X ID */
 productRouter.get('/:pid', async (req, res) => {
   try {
     const productId = req.params.pid;
@@ -50,8 +66,7 @@ productRouter.get('/:pid', async (req, res) => {
   }
 });
 
-
-  /* AGREGA UN PRODUCTO */
+/* AGREGA UN PRODUCTO */
 productRouter.post('/', async (req, res) => {
   try {
     const product = req.body;
@@ -62,8 +77,7 @@ productRouter.post('/', async (req, res) => {
   }
 });
 
-
-  /* ACTUALIZA EL PRODUCTO */
+/* ACTUALIZA EL PRODUCTO */
 productRouter.put('/:pid', async (req, res) => {
   try {
     const productId = req.params.pid;
@@ -79,8 +93,7 @@ productRouter.put('/:pid', async (req, res) => {
   }
 });
 
-
-  /* ELIMINA UN PRODUCTO */
+/* ELIMINA UN PRODUCTO */
 productRouter.delete('/:pid', async (req, res) => {
   try {
     const productId = req.params.pid;
@@ -95,24 +108,20 @@ productRouter.delete('/:pid', async (req, res) => {
   }
 });
 
-
-  /* EXPRESS PARA EL ENRUTADOR D PRODUCTOS */
+/* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
 app.use('/api/products', express.json());
 app.use('/api/products', productRouter);
 
-
-  /* RUTA /api/carts */
+/* RUTA /api/carts */
 const cartRouter = express.Router();
 
-
-  /* NUEVO CARRITO */
+/* NUEVO CARRITO */
 cartRouter.post('/', (req, res) => {
   const newCart = cartManager.createCart();
   res.json({ message: 'Nuevo carrito creado' });
 });
 
-
-  /* LLEGA LISTA D PRODUCTO DEL CARRITO */
+/* LLEGA LISTA DE PRODUCTO DEL CARRITO */
 cartRouter.get('/:cid', (req, res) => {
   const cartId = req.params.cid;
   const cart = cartManager.getCart(cartId);
@@ -124,8 +133,7 @@ cartRouter.get('/:cid', (req, res) => {
   }
 });
 
-
-  /* AGREGA PRODCUTO AL CARRITO */
+/* AGREGA PRODUCTO AL CARRITO */
 cartRouter.post('/:cid/product/:pid', (req, res) => {
   const cartId = req.params.cid;
   const productId = req.params.pid;
@@ -138,14 +146,13 @@ cartRouter.post('/:cid/product/:pid', (req, res) => {
   }
 });
 
-
-  /* CONFIGURACION DEL EXPRESS PARA EL ENRUTADOR DE CARRITOS */
+/* CONFIGURACION DEL EXPRESS PARA EL ENRUTADOR DE CARRITOS */
 app.use('/api/carts', express.json());
 app.use('/api/carts', cartRouter);
 
-  /* SERVIDOR 8080 */
-app.listen(8080, () => {
-  console.log('Servidor iniciado en el puerto 8080');
+/* SERVIDOR Socket.IO LocalHost3000 */
+server.listen(3000, () => {
+  console.log('Servidor de Socket.IO iniciado en el puerto 3000');
 });
 
 module.exports = app;

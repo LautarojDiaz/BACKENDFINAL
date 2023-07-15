@@ -5,8 +5,7 @@ class ProductManager {
     this.path = path;
   }
 
-
-    /* NUEVO PRODUCTO A LISTA D PRODUCTOS */
+  /* AGREGAR UN NUEVO PRODUCTO A LA LISTA DE PRODUCTOS */
   async addProduct(product) {
     const products = await this.getProductsFromDB();
     product.id = this.getNextProductId(products);
@@ -15,23 +14,22 @@ class ProductManager {
     return product.id;
   }
 
-
-    /* VE LISTA COMPLETA D PRODUCTOS */
+  /* OBTENER LA LISTA COMPLETA DE PRODUCTOS */
   async getProducts() {
     return await this.getProductsFromDB();
   }
 
-
-    /* PRODUCTO X ID */
+  /* OBTENER UN PRODUCTO POR SU ID */
   async getProductById(id) {
     const products = await this.getProductsFromDB();
+    id = parseInt(id); // Parsear el ID a número
     return products.find((product) => product.id === id);
   }
 
-
-    /* ACTUALIZA PRODUCTO EXISTENTE */
+  /* ACTUALIZAR UN PRODUCTO EXISTENTE */
   async updateProduct(id, updatedFields) {
     const products = await this.getProductsFromDB();
+    id = parseInt(id); // Parsear el ID a número
     const index = products.findIndex((product) => product.id === id);
     if (index !== -1) {
       products[index] = { ...products[index], ...updatedFields };
@@ -41,10 +39,10 @@ class ProductManager {
     return false;
   }
 
-
-    /* ELIMINA PRODUCTO X ID */
+  /* ELIMINAR UN PRODUCTO POR SU ID */
   async deleteProduct(id) {
     const products = await this.getProductsFromDB();
+    id = parseInt(id); // Parsear el ID a número
     const index = products.findIndex((product) => product.id === id);
     if (index !== -1) {
       products.splice(index, 1);
@@ -54,8 +52,7 @@ class ProductManager {
     return false;
   }
 
-
-    /* RECIBE PROXIMO ID PARA UN NUEVO PRODUCTO */
+  /* OBTENER EL PRÓXIMO ID DISPONIBLE PARA UN NUEVO PRODUCTO */
   getNextProductId(products) {
     if (products.length === 0) {
       return 1;
@@ -64,8 +61,7 @@ class ProductManager {
     return maxId + 1;
   }
 
-
-    /* LEE EL PRODUCTO, LO DEVUELVE COMO ARRAY D OBJETO */
+  /* LEER LOS PRODUCTOS DESDE LA BASE DE DATOS */
   async getProductsFromDB() {
     try {
       const fileContents = await fs.readFile(this.path, 'utf-8');
@@ -75,8 +71,7 @@ class ProductManager {
     }
   }
 
-  
-    /* GUARDA EL PRODUCTO EN EL ARCHIVO */
+  /* GUARDAR LOS PRODUCTOS EN LA BASE DE DATOS */
   async saveProductsToDB(products) {
     try {
       await fs.writeFile(this.path, JSON.stringify(products, null, 2));
