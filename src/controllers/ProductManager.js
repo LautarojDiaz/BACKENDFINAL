@@ -1,17 +1,21 @@
 const { promises: fs } = require('fs');
+const { EventEmitter } = require('events');
 
-class ProductManager {
+class ProductManager extends EventEmitter {
   constructor(path) {
+    super();
     this.path = path;
   }
 
   /* AGREGAR UN NUEVO PRODUCTO A LA LISTA DE PRODUCTOS */
   async addProduct(product) {
     const products = await this.getProductsFromDB();
-    product.id = this.getNextProductId(products);
-    products.push(product);
+    const newProductId = this.getNextProductId(products);
+    const newProduct = { id: newProductId, ...product };
+    products.push(newProduct);
     await this.saveProductsToDB(products);
-    return product.id;
+    this.emit('productAdded', newProduct); // Emitir evento de producto agregado
+    return newProductId;
   }
 
   /* OBTENER LA LISTA COMPLETA DE PRODUCTOS */
@@ -22,14 +26,14 @@ class ProductManager {
   /* OBTENER UN PRODUCTO POR SU ID */
   async getProductById(id) {
     const products = await this.getProductsFromDB();
-    id = parseInt(id); // Parsear el ID a número
+    id = parseInt(id, 10); // Parsear el ID a número con base 10
     return products.find((product) => product.id === id);
   }
 
   /* ACTUALIZAR UN PRODUCTO EXISTENTE */
   async updateProduct(id, updatedFields) {
     const products = await this.getProductsFromDB();
-    id = parseInt(id); // Parsear el ID a número
+    id = parseInt(id, 10); // Parsear el ID a número con base 10
     const index = products.findIndex((product) => product.id === id);
     if (index !== -1) {
       products[index] = { ...products[index], ...updatedFields };
@@ -42,11 +46,12 @@ class ProductManager {
   /* ELIMINAR UN PRODUCTO POR SU ID */
   async deleteProduct(id) {
     const products = await this.getProductsFromDB();
-    id = parseInt(id); // Parsear el ID a número
+    id = parseInt(id, 10); // Parsear el ID a número con base 10
     const index = products.findIndex((product) => product.id === id);
     if (index !== -1) {
-      products.splice(index, 1);
+      const deletedProduct = products.splice(index, 1)[0];
       await this.saveProductsToDB(products);
+      this.emit('productDeleted', deletedProduct); // Emitir evento de producto eliminado
       return true;
     }
     return false;

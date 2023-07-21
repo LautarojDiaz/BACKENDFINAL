@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const ProductManager = require('./controllers/ProductManager');
-const Cart = require('./models/Cart');
 const CartManager = require('./CartManager');
 const exphbs = require('express-handlebars');
 const http = require('http');
@@ -12,11 +11,13 @@ const productManager = new ProductManager(path.join(__dirname, '/../data/product
 const cartManager = new CartManager();
 
 /* INFORMACION DEL INDEX */
+// Esta ruta sirve para enviar el archivo "index.html" cuando el cliente accede al root del sitio.
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'routes', 'index.html'));
 });
 
 /* HANDLEBARS */
+// Configuración de Handlebars como motor de plantillas para las vistas.
 const hbs = exphbs.create({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views/layouts'),
@@ -27,11 +28,49 @@ app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
 /* EVENTOS Socket.IO */
+// Configuración de Socket.IO para manejar eventos en tiempo real.
 const server = http.createServer(app);
 const io = socketIO(server);
 io.on('connection', (socket) => {
   console.log('Cliente conectado');
+
+  /* EVENTO AGREGAR PRODUCTO DESDE realTimeProducts.handlebars  */
+  socket.on('addProduct', async (productData) => {
+    try {
+      const productId = await productManager.addProduct(productData);
+      io.emit('productAdded', { id: productId, ...productData });
+    } catch (error) {
+      console.error('Error al agregar el producto:', error.message);
+    }
+  });
+
+  /* EVENTO ELIMINAR PRODUCTO DESDE realTimeProducts.handlebars */
+  socket.on('deleteProduct', async (productId) => {
+    try {
+      const success = await productManager.deleteProduct(productId);
+      if (success) {
+        io.emit('productDeleted', productId);
+      }
+    } catch (error) {
+      console.error('Error al eliminar el producto:', error.message);
+    }
+  });
 });
+
+/* RUTA /realtimeproducts */
+// Esta ruta sirve para renderizar la vista "realTimeProducts.handlebars" con la lista de productos actual.
+app.get('/realtimeproducts', async (req, res) => {
+  try {
+    const products = await productManager.getProducts();
+    res.render('realTimeProducts', {
+      pageTitle: 'Real Time Products',
+      products: products
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los productos' });
+  }
+});
+
 
 /* RUTA /api/products */
 const productRouter = express.Router();
