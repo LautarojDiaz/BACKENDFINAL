@@ -11,7 +11,6 @@ const productManager = new ProductManager(path.join(__dirname, '/../data/product
 const cartManager = new CartManager();
 
 /* INFORMACION DEL INDEX */
-// Esta ruta sirve para enviar el archivo "index.html" cuando el cliente accede al root del sitio.
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'routes', 'index.html'));
 });
@@ -27,8 +26,8 @@ app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
-/* EVENTOS Socket.IO */
-// Configuración de Socket.IO para manejar eventos en tiempo real.
+
+  /* CONFIG D Socket.IO MANEJO D EVENTOS A TIEMPO REAL */
 const server = http.createServer(app);
 const io = socketIO(server);
 io.on('connection', (socket) => {
@@ -58,7 +57,6 @@ io.on('connection', (socket) => {
 });
 
 /* RUTA /realtimeproducts */
-// Esta ruta sirve para renderizar la vista "realTimeProducts.handlebars" con la lista de productos actual.
 app.get('/realtimeproducts', async (req, res) => {
   try {
     const products = await productManager.getProducts();
