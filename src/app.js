@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const mongoose = require('mongoose');
 const ProductManager = require('./controllers/ProductManager');
 const CartManager = require('./CartManager');
 const exphbs = require('express-handlebars');
@@ -10,13 +11,29 @@ const app = express();
 const productManager = new ProductManager(path.join(__dirname, '/../data/products.json'));
 const cartManager = new CartManager();
 
+
+// Importar el modelo Message
+const Message = require('./models/Message');
+
+
+/* CONEXIÓN A LA BASE DE DATOS MONGODB */
+mongoose.connect('mongodb://localhost:27017/ecommerce', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => {
+    console.log('Conexión exitosa a la base de datos MongoDB');
+  })
+  .catch((error) => {
+    console.error('Error en la conexión a la base de datos:', error);
+  });
+
 /* INFORMACION DEL INDEX */
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'routes', 'index.html'));
 });
 
 /* HANDLEBARS */
-// Configuración de Handlebars como motor de plantillas para las vistas.
 const hbs = exphbs.create({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views/layouts'),
@@ -27,7 +44,7 @@ app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
 
-  /* CONFIG D Socket.IO MANEJO D EVENTOS A TIEMPO REAL */
+/* CONFIGURACIÓN DE Socket.IO PARA MANEJO DE EVENTOS EN TIEMPO REAL */
 const server = http.createServer(app);
 const io = socketIO(server);
 io.on('connection', (socket) => {
@@ -54,6 +71,14 @@ io.on('connection', (socket) => {
       console.error('Error al eliminar el producto:', error.message);
     }
   });
+
+  /* EVENTO ENVIAR MENSAJE DESDE chat.handlebars */
+  socket.on('sendMessage', async (message) => {
+    try {
+    } catch (error) {
+      console.error('Error al enviar el mensaje:', error.message);
+    }
+  });
 });
 
 /* RUTA /realtimeproducts */
@@ -68,7 +93,6 @@ app.get('/realtimeproducts', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener los productos' });
   }
 });
-
 
 /* RUTA /api/products */
 const productRouter = express.Router();

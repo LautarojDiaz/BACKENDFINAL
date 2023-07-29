@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat</title>
+</head>
+<body>
+  <h1>Chat</h1>
+  <div id="chat-messages"></div>
+  <input type="text" id="message-input" placeholder="Escribe tu mensaje...">
+  <button id="send-button">Enviar</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+
+    /* MENSAJES EN EL CHAT, AL RECIBIRLOS */
+socket.on('messageReceived', (message) => {
+    const messageDiv = document.createElement('div');
+    messageDiv.textContent = `${message.user}: ${message.message}`;
+    document.getElementById('chat-messages').appendChild(messageDiv);
+});
+
+    /* ENVIA MENSAJES AL APRETAR EN "Enviar" */
+document.getElementById('send-button').addEventListener('click', () => {
+    const user = prompt('Ingresa tu nombre de usuario:');
+    const message = document.getElementById('message-input').value;
+    socket.emit('sendMessage', { user, message });
+    document.getElementById('message-input').value = '';
+});
+
+    </script>
+</body>
+</html>
+
