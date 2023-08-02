@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const ProductManager = require('./controllers/ProductManager');
-const CartManager = require('./CartManager');
+const CartManager = require('./controllers/CartManager');
 const exphbs = require('express-handlebars');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -12,8 +12,9 @@ const productManager = new ProductManager(path.join(__dirname, '/../data/product
 const cartManager = new CartManager();
 
 
-// Importar el modelo Message
 const Message = require('./models/Message');
+const Product = require('./models/Product');
+const Cart = require('./models/Cart');
 
 
 /* CONEXIÓN A LA BASE DE DATOS MONGODB */
