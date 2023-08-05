@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Detalles del carrito</title>
+</head>
+<body>
+  <h1>Detalles del carrito</h1>
+  <ul>
+    {{#each products}}
+    <li>{{this.name}} - Precio: {{this.price}}</li>
+    {{/each}}
+  </ul>
+  <p>Total: {{total}}</p>
+</body>
+</html>

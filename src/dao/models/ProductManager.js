@@ -3,8 +3,7 @@ const Product = require('./models/Product');
 class ProductManager {
   constructor() {}
 
-
-    /* NUEVO PRODUCTO A BASE D DATOS */
+  /* NUEVO PRODUCTO A BASE DE DATOS */
   async addProduct(name, price, description) {
     try {
       const newProduct = new Product({
@@ -21,8 +20,7 @@ class ProductManager {
     }
   }
 
-
-    /* OBTIENE LOS PRDUCTOS D BASE D DATOS */
+  /* OBTIENE LOS PRODUCTOS DE BASE DE DATOS */
   async getAllProducts() {
     try {
       const products = await Product.find();
@@ -33,8 +31,7 @@ class ProductManager {
     }
   }
 
-
-    /* OBTIENE PRODUCTO X SU ID */
+  /* OBTIENE PRODUCTO POR SU ID */
   async getProductById(productId) {
     try {
       const product = await Product.findById(productId);
@@ -45,8 +42,7 @@ class ProductManager {
     }
   }
 
-
-    /* ACTUALIZA PRODUCTO X SU ID */
+  /* ACTUALIZA PRODUCTO POR SU ID */
   async updateProduct(productId, updatedData) {
     try {
       const product = await Product.findByIdAndUpdate(productId, updatedData, {
@@ -59,8 +55,7 @@ class ProductManager {
     }
   }
 
-
-    /* ELIMINA PRODUCTO X SU ID */
+  /* ELIMINA PRODUCTO POR SU ID */
   async deleteProduct(productId) {
     try {
       const product = await Product.findByIdAndRemove(productId);

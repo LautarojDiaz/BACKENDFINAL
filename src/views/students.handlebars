@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Estudiantes</title>
+</head>
+<body>
+    <h1>Lista de Estudiantes</h1>
+    <ul>
+        {{#each students}}
+        <li>{{this.name}}</li>
+        {{/each}}
+    </ul>
+    <p>Página {{currentPage}} de {{totalPages}}</p>
+
+
+    {{!-- PAGINA ANTERIOR --}}
+    {{#if hasPrevPage}}
+    <a href="/students?page={{prevPage}}">Anterior</a>
+    {{/if}}
+
+
+    {{!-- SIGUENTE PAGINA --}}
+    {{#if hasNextPage}}
+    <a href="/students?page={{nextPage}}">Siguiente</a>
+    {{/if}}
+</body>
+</html>

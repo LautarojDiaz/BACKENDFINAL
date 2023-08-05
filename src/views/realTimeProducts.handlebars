@@ -32,6 +32,19 @@
     const socket = io();
 
 
+  app.get('/realtimeproducts', async (req, res) => {
+    try {
+      const products = await productManager.getProducts(); 
+      res.render('realTimeProducts', {
+        pageTitle: 'Real Time Products',
+        products: products
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Error al obtener los productos' });
+    }
+  });
+
+
     /* EVENTO AGREGAR PRODUCTO */
     document.getElementById('addProductForm').addEventListener('submit', (event) => {
       event.preventDefault();

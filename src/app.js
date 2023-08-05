@@ -1,86 +1,342 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const ProductManager = require('./controllers/ProductManager');
-const CartManager = require('./controllers/CartManager');
 const exphbs = require('express-handlebars');
 const http = require('http');
 const socketIO = require('socket.io');
+const CartManager = require('./controllers/CartController');
+const ProductManager = require('./controllers/ProductManager');
+const ProductModel = require('./models/ProductModel');
 
+const PORT = 8080;
 const app = express();
-const productManager = new ProductManager(path.join(__dirname, '/../data/products.json'));
-const cartManager = new CartManager();
 
 
-const Message = require('./models/Message');
-const Product = require('./models/Product');
-const Cart = require('./models/Cart');
-
-
-/* CONEXIÓN A LA BASE DE DATOS MONGODB */
+  /* CONFIGURACION BASE D DATOS MongoDB CON Mongoose */
 mongoose.connect('mongodb://localhost:27017/ecommerce', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => {
-    console.log('Conexión exitosa a la base de datos MongoDB');
-  })
-  .catch((error) => {
-    console.error('Error en la conexión a la base de datos:', error);
-  });
+  .then(() => console.log('Conexión a MongoDB exitosa'))
+  .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
-/* INFORMACION DEL INDEX */
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'routes', 'index.html'));
-});
 
-/* HANDLEBARS */
+  /* CONFIGURACION Handleabars */
 const hbs = exphbs.create({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views/layouts'),
-  partialsDir: path.join(__dirname, 'views/partials')
+  partialsDir: path.join(__dirname, 'views/partials'),
 });
 app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
 
-/* CONFIGURACIÓN DE Socket.IO PARA MANEJO DE EVENTOS EN TIEMPO REAL */
+  /* RUTA A index.handlebars */
+app.get('/', (req, res) => {
+  res.render('index');
+});
+
+
+  /* RUTA A products.handlebars */
+app.get('/products', async (req, res) => {
+  try {
+    const products = await ProductManager.getProducts();
+    res.render('products', { products });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los productos' });
+  }
+});
+
+
+  /* RUTA LISTA D PRODUCTOS PAGINADOS /products/paginated */
+app.get('/products/paginated', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const sort = req.query.sort === 'desc' ? -1 : 1;
+    const query = req.query.query || {};
+
+    const products = await ProductModel.find(query)
+      .limit(limit)
+      .skip((page - 1) * limit)
+      .sort({ _id: sort });
+
+    const totalProducts = await ProductModel.countDocuments(query);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    res.render('productsPaginated', {
+      products: products,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+      nextPage: page + 1,
+      prevPage: page - 1,
+      limit: limit,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los productos' });
+  }
+});
+
+
+  /* RUTA CARRITO ESPECIFICO  */
+app.get('/carts/:cartId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const cart = await cartManager.getCart(cartId);
+  if (cart) {
+    const products = cart.getProducts();
+    const total = products.reduce((acc, product) => acc + product.price, 0);
+    res.render('cart', { products, total });
+  } else {
+    res.status(404).json({ error: 'Carrito no encontrado' });
+  }
+});
+
+
+  /* RUTA LISTA PRODUCTOS PAGINADOS */
+app.get('/products', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const sort = req.query.sort === 'desc' ? -1 : 1;
+    const query = req.query.query || {};
+    const products = await ProductManager.getProductsPaginated(limit, page, sort, query);
+    res.render('productsPaginated', {
+      products: products.payload, 
+      hasNextPage: products.hasNextPage,
+      hasPrevPage: products.hasPrevPage,
+      nextPage: products.nextPage,
+      prevPage: products.prevPage,
+      limit: limit,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los productos' });
+  }
+});
+
+
+  /* CartManager */
+const cartManager = new CartManager();
+
+
+  /* CREAR NUEVO CARRITO */
+app.post('/api/carts', async (req, res) => {
+  const cartId = await cartManager.createCart();
+  res.json({ cartId });
+});
+
+
+  /* OBTIENE INFO DE CARRITO X SU ID */
+app.get('/api/carts/:cartId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const cart = await cartManager.getCart(cartId);
+  res.json({ cart });
+});
+
+
+  /* AGREGAR PRODUCTO AL CARRITO */
+app.post('/api/carts/:cartId/products/:productId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const productId = req.params.productId;
+  const result = await cartManager.addProductToCart(cartId, productId);
+  res.json({ success: result });
+});
+
+
+  /* ELIMINAR PRODUCTO DEL CARRITO */
+app.delete('/api/carts/:cartId/products/:productId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const productId = req.params.productId;
+  const result = await cartManager.removeProductFromCart(cartId, productId);
+  res.json({ success: result });
+});
+
+
+  /* OBTENER LISTA D PRODUCTOS DEL CARRITO */
+app.get('/api/carts/:cartId/products', async (req, res) => {
+  const cartId = req.params.cartId;
+  const products = await cartManager.getCartProducts(cartId);
+  res.json({ products });
+});
+
+const students = [
+  { name: 'Estudiante 1' },
+  { name: 'Estudiante 2' },
+  { name: 'Estudiante 3' },
+  { name: 'Estudiante 4' },
+  { name: 'Estudiante 5' },
+];
+
+app.get('/students', (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5;
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const currentStudents = students.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(students.length / limit);
+
+  res.render('students', {
+    students: currentStudents,
+    currentPage: page,
+    totalPages: totalPages,
+    hasPrevPage: page > 1,
+    hasNextPage: page < totalPages,
+    prevPage: page - 1,
+    nextPage: page + 1,
+  });
+});
+
+
+  /* VISUALIZA CARRITO ESPECIFICO CON DETALLES */
+app.get('/carts/:cartId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const cart = await cartManager.getCart(cartId);
+  if (cart) {
+    const products = cart.getProducts();
+    const total = products.reduce((acc, product) => acc + product.price * product.quantity, 0);
+    res.render('cartDetails', { products, total });
+  } else {
+    res.status(404).json({ error: 'Carrito no encontrado' });
+  }
+});
+
+
+  /* ACTUALIZAR CANTIDAD D UN PRODUCTO EN EL CARRITO */
+app.put('/api/carts/:cartId/products/:productId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const productId = req.params.productId;
+  const newQuantity = parseInt(req.body.quantity);
+  try {
+    const success = await cartManager.updateProductQuantity(cartId, productId, newQuantity);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: 'Producto no encontrado en el carrito' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar la cantidad del producto' });
+  }
+});
+
+
+  /* ELIMINAR PRODUCTO D CARRITO Y try...catch POR SI EXISTE ALGUN ERROR  */
+app.delete('/api/carts/:cartId/products/:productId', async (req, res) => {
+  const cartId = req.params.cartId;
+  const productId = req.params.productId;
+
+  try {
+    const success = await cartManager.removeProductFromCart(cartId, productId);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: 'Producto no encontrado en el carrito' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el producto del carrito' });
+  }
+});
+
+
+// Ruta que obtiene productos paginados con filtros y ordenamiento
+app.get('/api/products', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const sort = req.query.sort === 'desc' ? -1 : 1;
+    const query = req.query.query || {};
+
+    const products = await ProductManager.getProductsPaginated(limit, page, sort, query);
+    const totalProducts = await ProductManager.getTotalProducts(query);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    res.json({
+      status: 'success',
+      payload: products,
+      totalPages: totalPages,
+      prevPage: page > 1 ? page - 1 : null,
+      nextPage: page < totalPages ? page + 1 : null,
+      page: page,
+      hasPrevPage: page > 1,
+      hasNextPage: page < totalPages,
+      prevLink: page > 1 ? `/api/products?limit=${limit}&page=${page - 1}` : null,
+      nextLink: page < totalPages ? `/api/products?limit=${limit}&page=${page + 1}` : null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los productos' });
+  }
+});
+
+
+  /* SERVIDOR Y CONFIGURACION Socket.IO */
 const server = http.createServer(app);
 const io = socketIO(server);
+
+
+  /* EVENTOD D Socket.IO */
+io.on('connection', (socket) => {
+  console.log('Cliente conectado');
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado');
+  });
+});
+
+
+  /* INICIAR SERVER */
+server.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
+
+
+  /* CONEXIÓN A LA BASE DE DATOS MONGODB */
+mongoose.connect('mongodb://localhost:27017/ecommerce', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Conexión a MongoDB exitosa'))
+  .catch((err) => console.error('Error al conectar a MongoDB:', err));
+
+
+  /* INFORMACION A INDEX */
+app.get('/', (req, res) => {
+  res.render('index'); 
+});
+
+
+  /* CONFIGURACIÓN DE Socket.IO PARA MANEJO DE EVENTOS EN TIEMPO REAL */
 io.on('connection', (socket) => {
   console.log('Cliente conectado');
 
   /* EVENTO AGREGAR PRODUCTO DESDE realTimeProducts.handlebars  */
-  socket.on('addProduct', async (productData) => {
-    try {
+socket.on('addProduct', async (productData) => {
+  try {
       const productId = await productManager.addProduct(productData);
       io.emit('productAdded', { id: productId, ...productData });
-    } catch (error) {
+  } catch (error) {
       console.error('Error al agregar el producto:', error.message);
-    }
-  });
+  }
+});
 
   /* EVENTO ELIMINAR PRODUCTO DESDE realTimeProducts.handlebars */
-  socket.on('deleteProduct', async (productId) => {
-    try {
-      const success = await productManager.deleteProduct(productId);
-      if (success) {
-        io.emit('productDeleted', productId);
-      }
-    } catch (error) {
-      console.error('Error al eliminar el producto:', error.message);
+socket.on('deleteProduct', async (productId) => {
+  try {
+    const success = await productManager.deleteProduct(productId);
+    if (success) {
+      io.emit('productDeleted', productId);
     }
-  });
+  } catch (error) {
+    console.error('Error al eliminar el producto:', error.message);
+  }
+});
 
   /* EVENTO ENVIAR MENSAJE DESDE chat.handlebars */
-  socket.on('sendMessage', async (message) => {
+socket.on('sendMessage', async (message) => {
     try {
     } catch (error) {
       console.error('Error al enviar el mensaje:', error.message);
     }
   });
 });
+
 
 /* RUTA /realtimeproducts */
 app.get('/realtimeproducts', async (req, res) => {
@@ -95,8 +351,10 @@ app.get('/realtimeproducts', async (req, res) => {
   }
 });
 
+
 /* RUTA /api/products */
 const productRouter = express.Router();
+
 
 /* OBTIENE LOS PRODUCTOS */
 productRouter.get('/', async (req, res) => {
@@ -113,6 +371,7 @@ productRouter.get('/', async (req, res) => {
   }
 });
 
+
 /* PRODUCTO X ID */
 productRouter.get('/:pid', async (req, res) => {
   try {
@@ -128,6 +387,7 @@ productRouter.get('/:pid', async (req, res) => {
   }
 });
 
+
 /* AGREGA UN PRODUCTO */
 productRouter.post('/', async (req, res) => {
   try {
@@ -138,6 +398,7 @@ productRouter.post('/', async (req, res) => {
     res.status(500).json({ error: 'Error al agregar el producto' });
   }
 });
+
 
 /* ACTUALIZA EL PRODUCTO */
 productRouter.put('/:pid', async (req, res) => {
@@ -155,6 +416,7 @@ productRouter.put('/:pid', async (req, res) => {
   }
 });
 
+
 /* ELIMINA UN PRODUCTO */
 productRouter.delete('/:pid', async (req, res) => {
   try {
@@ -170,20 +432,24 @@ productRouter.delete('/:pid', async (req, res) => {
   }
 });
 
-/* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
+
+  /* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
 app.use('/api/products', express.json());
 app.use('/api/products', productRouter);
 
-/* RUTA /api/carts */
+
+  /* RUTA /api/carts */
 const cartRouter = express.Router();
 
-/* NUEVO CARRITO */
+
+  /* NUEVO CARRITO */
 cartRouter.post('/', (req, res) => {
   const newCart = cartManager.createCart();
   res.json({ message: 'Nuevo carrito creado' });
 });
 
-/* LLEGA LISTA DE PRODUCTO DEL CARRITO */
+
+  /* LLEGA LISTA DE PRODUCTO DEL CARRITO */
 cartRouter.get('/:cid', (req, res) => {
   const cartId = req.params.cid;
   const cart = cartManager.getCart(cartId);
@@ -195,7 +461,8 @@ cartRouter.get('/:cid', (req, res) => {
   }
 });
 
-/* AGREGA PRODUCTO AL CARRITO */
+
+  /* AGREGA PRODUCTO AL CARRITO */
 cartRouter.post('/:cid/product/:pid', (req, res) => {
   const cartId = req.params.cid;
   const productId = req.params.pid;
@@ -208,13 +475,10 @@ cartRouter.post('/:cid/product/:pid', (req, res) => {
   }
 });
 
+
 /* CONFIGURACION DEL EXPRESS PARA EL ENRUTADOR DE CARRITOS */
 app.use('/api/carts', express.json());
 app.use('/api/carts', cartRouter);
 
-/* SERVIDOR Socket.IO LocalHost3000 */
-server.listen(3000, () => {
-  console.log('Servidor de Socket.IO iniciado en el puerto 3000');
-});
 
 module.exports = app;
