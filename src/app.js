@@ -4,15 +4,20 @@ const mongoose = require('mongoose');
 const exphbs = require('express-handlebars');
 const http = require('http');
 const socketIO = require('socket.io');
-const CartManager = require('./controllers/CartController');
+const bcrypt = require('bcrypt');
+const { check, validationResult } = require('express-validator');
+const UserModel = require('./models/userModel');
 const ProductManager = require('./controllers/ProductManager');
+const CartManager = require('./controllers/CartController');
 const ProductModel = require('./models/ProductModel');
 
 const PORT = 8080;
 const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
 
 
-  /* CONFIGURACION BASE D DATOS MongoDB CON Mongoose */
+  /* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
 mongoose.connect('mongodb://localhost:27017/ecommerce', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -21,7 +26,7 @@ mongoose.connect('mongodb://localhost:27017/ecommerce', {
   .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
 
-  /* CONFIGURACION Handleabars */
+  /* CONFIGURACION Handlebars */
 const hbs = exphbs.create({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views/layouts'),
@@ -36,7 +41,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.get('/', (req, res) => {
   res.render('index');
 });
-
 
   /* RUTA A products.handlebars */
 app.get('/products', async (req, res) => {
@@ -76,6 +80,187 @@ app.get('/products/paginated', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener los productos' });
   }
+});
+
+
+  /* REGISTRO DE CUENTA */
+app.get('/register', (req, res) => {
+  res.render('register');
+});
+
+app.post('/register', [
+  check('name').notEmpty().withMessage('El nombre es requerido'),
+  check('email').isEmail().withMessage('El correo electrónico no es válido'),
+  check('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres')
+], async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await UserModel.create({
+      name: name,
+      email: email,
+      password: hashedPassword
+    });
+
+    res.redirect('/login');
+  } catch (error) {
+    res.status(500).json({ error: 'Error al procesar el registro' });
+  }
+});
+
+
+  /* LOGIN */
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', [
+  check('email').isEmail().withMessage('El correo electrónico no es válido'),
+  check('password').notEmpty().withMessage('La contraseña es requerida')
+], async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const user = await UserModel.findOne({ email });
+
+    if (user) {
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (passwordMatch) {
+        req.session.user = { email: user.email, role: user.role };
+        res.redirect('/products');
+      } else {
+        res.redirect('/login');
+      }
+    } else {
+      res.redirect('/login');
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+
+/* LOGOUT */
+app.post('/logout', (req, res) => {
+  req.session.destroy(); // Destruye la sesión
+  res.redirect('/login'); // Redirige al usuario a la página de inicio de sesión
+});
+
+
+  /* FINALIZAR LA SESION DEL USARIO*/
+app.post('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/login');
+});
+
+
+  /* MOSTRAR FORMULARIO */
+app.get('/register', (req, res) => {
+  res.render('register'); 
+});
+
+
+  /* PROCESAR REGISTRO CUANDO S ENVIE FORMULARIO */
+app.post('/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    res.redirect('/login');
+  } catch (error) {
+    res.status(500).json({ error: 'Error al procesar el registro' });
+  }
+});
+
+
+  /* VERIFICION DE LAS CREDENCIALES DEL USUARIO */
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await UserModel.findOne({ email });
+
+    if (user) {
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (passwordMatch) {
+            /* CREDENCIALES VALIDAS, CREAR UNA SESION */
+        req.session.user = { email: user.email, role: user.role };
+        res.redirect('/products');
+      } else {
+
+          /* CONSTRASEÑA INCORRECTA */
+        res.redirect('/login');
+      }
+    } else {
+          /* USUARIO NO ENCONTRADO */
+      res.redirect('/login');
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+
+  /* REGISTRO E INICIAR SESION */
+app.post('/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await UserModel.create({
+      name: name,
+      email: email,
+      password: hashedPassword
+    });
+
+    res.redirect('/login');
+  } catch (error) {
+    res.status(500).json({ error: 'Error al procesar el registro' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await UserModel.findOne({ email });
+
+    if (user) {
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (passwordMatch) {
+        req.session.user = { email: user.email, role: user.role };
+        res.redirect('/products');
+      } else {
+        res.redirect('/login');
+      }
+    } else {
+      res.redirect('/login');
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+
+  /* SERVIDOR  */
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
 
 
@@ -237,7 +422,7 @@ app.delete('/api/carts/:cartId/products/:productId', async (req, res) => {
 });
 
 
-// Ruta que obtiene productos paginados con filtros y ordenamiento
+  /* PRODUCTOS PAGINADOS CON FILTROS Y ORDENAMIENTO */
 app.get('/api/products', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -268,8 +453,8 @@ app.get('/api/products', async (req, res) => {
 
 
   /* SERVIDOR Y CONFIGURACION Socket.IO */
-const server = http.createServer(app);
-const io = socketIO(server);
+io.on('connection', (socket) => {
+  console.log('Cliente conectado');
 
 
   /* EVENTOD D Socket.IO */
@@ -306,30 +491,33 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Cliente conectado');
 
+
   /* EVENTO AGREGAR PRODUCTO DESDE realTimeProducts.handlebars  */
-socket.on('addProduct', async (productData) => {
-  try {
+  socket.on('addProduct', async (productData) => {
+    try {
       const productId = await productManager.addProduct(productData);
       io.emit('productAdded', { id: productId, ...productData });
-  } catch (error) {
+    } catch (error) {
       console.error('Error al agregar el producto:', error.message);
-  }
-});
+    }
+  });
+
 
   /* EVENTO ELIMINAR PRODUCTO DESDE realTimeProducts.handlebars */
-socket.on('deleteProduct', async (productId) => {
-  try {
-    const success = await productManager.deleteProduct(productId);
-    if (success) {
-      io.emit('productDeleted', productId);
+  socket.on('deleteProduct', async (productId) => {
+    try {
+      const success = await productManager.deleteProduct(productId);
+      if (success) {
+        io.emit('productDeleted', productId);
+      }
+    } catch (error) {
+      console.error('Error al eliminar el producto:', error.message);
     }
-  } catch (error) {
-    console.error('Error al eliminar el producto:', error.message);
-  }
-});
+  });
+
 
   /* EVENTO ENVIAR MENSAJE DESDE chat.handlebars */
-socket.on('sendMessage', async (message) => {
+  socket.on('sendMessage', async (message) => {
     try {
     } catch (error) {
       console.error('Error al enviar el mensaje:', error.message);
@@ -400,7 +588,7 @@ productRouter.post('/', async (req, res) => {
 });
 
 
-/* ACTUALIZA EL PRODUCTO */
+  /* ACTUALIZA EL PRODUCTO */
 productRouter.put('/:pid', async (req, res) => {
   try {
     const productId = req.params.pid;
@@ -417,7 +605,7 @@ productRouter.put('/:pid', async (req, res) => {
 });
 
 
-/* ELIMINA UN PRODUCTO */
+  /* ELIMINA UN PRODUCTO */
 productRouter.delete('/:pid', async (req, res) => {
   try {
     const productId = req.params.pid;
@@ -431,11 +619,6 @@ productRouter.delete('/:pid', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar el producto' });
   }
 });
-
-
-  /* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
-app.use('/api/products', express.json());
-app.use('/api/products', productRouter);
 
 
   /* RUTA /api/carts */
@@ -474,6 +657,11 @@ cartRouter.post('/:cid/product/:pid', (req, res) => {
     res.status(404).json({ error: 'Carrito no encontrado' });
   }
 });
+
+
+/* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
+app.use('/api/products', express.json());
+app.use('/api/products', productRouter);
 
 
 /* CONFIGURACION DEL EXPRESS PARA EL ENRUTADOR DE CARRITOS */
