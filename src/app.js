@@ -10,18 +10,131 @@ const UserModel = require('./models/userModel');
 const ProductManager = require('./controllers/ProductManager');
 const CartManager = require('./controllers/CartController');
 const ProductModel = require('./models/ProductModel');
+const cartRoutes = require('./dao/fileManager/cart.routes');
+const productRoutes = require('./dao/fileManager/product.routes');
+const expressSession = require('express-session');
 
-const PORT = 8080;
+
+const PORT = 3000;
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
 
-  /* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
-mongoose.connect('mongodb://localhost:27017/ecommerce', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+  /* PASSAPORT Y AUTENTICACION */
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const GitHubStrategy = require('passport-github').Strategy;
+const expressSession = re
+quire('express-session');
+
+  /* EXPRESS Y PASSPORT */
+app.use(expressSession({ secret: 'secret', resave: true, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+  /* ESTRATEGIA AUTENTICACION LOCAL */
+passport.use(new LocalStrategy(
+  async (username, password, done) => {
+    try {
+      const user = await UserModel.findOne({ username });
+      if (!user) {
+        return done(null, false, { message: 'Usuario no encontrado' });
+      }
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (isMatch) {
+        return done(null, user);
+      } else {
+        return done(null, false, { message: 'Contraseña incorrecta' });
+      }
+    } catch (error) {
+      return done(error);
+    }
+  }
+));
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await UserModel.findById(id);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
+
+
+  /* REGISTRO E INICIAR SECION (localstrategy) */
+app.post('/register', passport.authenticate('local', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/register',
+  failureFlash: true
+}));
+
+app.post('/login', passport.authenticate('local', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login',
+  failureFlash: true
+}));
+
+
+  /* ESTRATEGIA D AUTENTICACION D GITHUB */
+passport.use(new GitHubStrategy({
+  clientID: 'YOUR_CLIENT_ID',
+  clientSecret: 'YOUR_CLIENT_SECRET',
+  callbackURL: 'http://localhost:3000/auth/github/callback'
+}, (accessToken, refreshToken, profile, done) => {
+}));
+
+
+  /* INICIO SESION CON GITHUB */
+app.get('/auth/github', passport.authenticate('github'));
+app.get('/auth/github/callback',
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  (req, res) => {
+    res.redirect('/dashboard');
+  }
+);
+
+
+  /* RUTA D REGISTRO (GET) */
+app.get('/register', (req, res) => {
+  res.render('register'); 
+});
+
+// Ruta de inicio de sesión (GET)
+app.get('/login', (req, res) => {
+  res.render('login'); 
+});
+
+
+  /* RUTA DASHBOARD (GET) */
+app.get('/dashboard', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.render('dashboard', { user: req.user }); 
+  } else {
+    res.redirect('/login'); 
+  }
+});
+
+
+  /* CIERRE D SESION (GET) */
+app.get('/logout', (req, res) => {
+  req.logout(); 
+  res.redirect('/');
+});
+
+
+/* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
+mongoose
+  .connect('mongodb://localhost:27017/ecommerce', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log('Conexión a MongoDB exitosa'))
   .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
@@ -41,6 +154,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.get('/', (req, res) => {
   res.render('index');
 });
+
 
   /* RUTA A products.handlebars */
 app.get('/products', async (req, res) => {
@@ -153,14 +267,14 @@ app.post('/login', [
 });
 
 
-/* LOGOUT */
+  /* LOGOUT */
 app.post('/logout', (req, res) => {
-  req.session.destroy(); // Destruye la sesión
-  res.redirect('/login'); // Redirige al usuario a la página de inicio de sesión
+  req.session.destroy(); 
+  res.redirect('/login');
 });
 
 
-  /* FINALIZAR LA SESION DEL USARIO*/
+  /* FINALIZAR LA SESION DEL USUARIO */
 app.post('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
@@ -173,7 +287,7 @@ app.get('/register', (req, res) => {
 });
 
 
-  /* PROCESAR REGISTRO CUANDO S ENVIE FORMULARIO */
+  /* PROCESAR REGISTRO CUANDO SE ENVIE EL FORMULARIO */
 app.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -186,7 +300,7 @@ app.post('/register', async (req, res) => {
 });
 
 
-  /* VERIFICION DE LAS CREDENCIALES DEL USUARIO */
+  /* VERIFICACIÓN DE LAS CREDENCIALES DEL USUARIO */
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -197,16 +311,15 @@ app.post('/login', async (req, res) => {
       const passwordMatch = await bcrypt.compare(password, user.password);
 
       if (passwordMatch) {
-            /* CREDENCIALES VALIDAS, CREAR UNA SESION */
+        /* CREDENCIALES VÁLIDAS, CREAR UNA SESIÓN */
         req.session.user = { email: user.email, role: user.role };
         res.redirect('/products');
       } else {
-
-          /* CONSTRASEÑA INCORRECTA */
+        /* CONTRASEÑA INCORRECTA */
         res.redirect('/login');
       }
     } else {
-          /* USUARIO NO ENCONTRADO */
+      /* USUARIO NO ENCONTRADO */
       res.redirect('/login');
     }
   } catch (error) {
@@ -214,8 +327,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-  /* REGISTRO E INICIAR SESION */
+/* REGISTRO E INICIAR SESIÓN */
 app.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -258,13 +370,13 @@ app.post('/login', async (req, res) => {
 });
 
 
-  /* SERVIDOR  */
+  /* SERVIDOR */
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
 
 
-  /* RUTA CARRITO ESPECIFICO  */
+  /* RUTA CARRITO ESPECÍFICO */
 app.get('/carts/:cartId', async (req, res) => {
   const cartId = req.params.cartId;
   const cart = await cartManager.getCart(cartId);
@@ -278,7 +390,7 @@ app.get('/carts/:cartId', async (req, res) => {
 });
 
 
-  /* RUTA LISTA PRODUCTOS PAGINADOS */
+/* RUTA LISTA PRODUCTOS PAGINADOS */
 app.get('/products', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -311,7 +423,7 @@ app.post('/api/carts', async (req, res) => {
 });
 
 
-  /* OBTIENE INFO DE CARRITO X SU ID */
+  /* OBTENER INFO DE CARRITO POR SU ID */
 app.get('/api/carts/:cartId', async (req, res) => {
   const cartId = req.params.cartId;
   const cart = await cartManager.getCart(cartId);
@@ -337,13 +449,15 @@ app.delete('/api/carts/:cartId/products/:productId', async (req, res) => {
 });
 
 
-  /* OBTENER LISTA D PRODUCTOS DEL CARRITO */
+  /* OBTENER LISTA DE PRODUCTOS DEL CARRITO */
 app.get('/api/carts/:cartId/products', async (req, res) => {
   const cartId = req.params.cartId;
   const products = await cartManager.getCartProducts(cartId);
   res.json({ products });
 });
 
+
+  /* RUTA /students */
 const students = [
   { name: 'Estudiante 1' },
   { name: 'Estudiante 2' },
@@ -372,7 +486,7 @@ app.get('/students', (req, res) => {
 });
 
 
-  /* VISUALIZA CARRITO ESPECIFICO CON DETALLES */
+  /* VISUALIZAR CARRITO ESPECÍFICO CON DETALLES */
 app.get('/carts/:cartId', async (req, res) => {
   const cartId = req.params.cartId;
   const cart = await cartManager.getCart(cartId);
@@ -386,7 +500,7 @@ app.get('/carts/:cartId', async (req, res) => {
 });
 
 
-  /* ACTUALIZAR CANTIDAD D UN PRODUCTO EN EL CARRITO */
+  /* ACTUALIZAR CANTIDAD DE UN PRODUCTO EN EL CARRITO */
 app.put('/api/carts/:cartId/products/:productId', async (req, res) => {
   const cartId = req.params.cartId;
   const productId = req.params.productId;
@@ -404,7 +518,7 @@ app.put('/api/carts/:cartId/products/:productId', async (req, res) => {
 });
 
 
-  /* ELIMINAR PRODUCTO D CARRITO Y try...catch POR SI EXISTE ALGUN ERROR  */
+  /* ELIMINAR PRODUCTO DEL CARRITO Y try...catch POR SI EXISTE ALGÚN ERROR */
 app.delete('/api/carts/:cartId/products/:productId', async (req, res) => {
   const cartId = req.params.cartId;
   const productId = req.params.productId;
@@ -443,8 +557,6 @@ app.get('/api/products', async (req, res) => {
       page: page,
       hasPrevPage: page > 1,
       hasNextPage: page < totalPages,
-      prevLink: page > 1 ? `/api/products?limit=${limit}&page=${page - 1}` : null,
-      nextLink: page < totalPages ? `/api/products?limit=${limit}&page=${page + 1}` : null,
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener los productos' });
@@ -452,221 +564,10 @@ app.get('/api/products', async (req, res) => {
 });
 
 
-  /* SERVIDOR Y CONFIGURACION Socket.IO */
-io.on('connection', (socket) => {
-  console.log('Cliente conectado');
-
-
-  /* EVENTOD D Socket.IO */
-io.on('connection', (socket) => {
-  console.log('Cliente conectado');
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado');
-  });
-});
-
-
-  /* INICIAR SERVER */
-server.listen(PORT, () => {
+  /* INICIAR EL SERVIDOR */
+app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
-
-
-  /* CONEXIÓN A LA BASE DE DATOS MONGODB */
-mongoose.connect('mongodb://localhost:27017/ecommerce', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('Conexión a MongoDB exitosa'))
-  .catch((err) => console.error('Error al conectar a MongoDB:', err));
-
-
-  /* INFORMACION A INDEX */
-app.get('/', (req, res) => {
-  res.render('index'); 
-});
-
-
-  /* CONFIGURACIÓN DE Socket.IO PARA MANEJO DE EVENTOS EN TIEMPO REAL */
-io.on('connection', (socket) => {
-  console.log('Cliente conectado');
-
-
-  /* EVENTO AGREGAR PRODUCTO DESDE realTimeProducts.handlebars  */
-  socket.on('addProduct', async (productData) => {
-    try {
-      const productId = await productManager.addProduct(productData);
-      io.emit('productAdded', { id: productId, ...productData });
-    } catch (error) {
-      console.error('Error al agregar el producto:', error.message);
-    }
-  });
-
-
-  /* EVENTO ELIMINAR PRODUCTO DESDE realTimeProducts.handlebars */
-  socket.on('deleteProduct', async (productId) => {
-    try {
-      const success = await productManager.deleteProduct(productId);
-      if (success) {
-        io.emit('productDeleted', productId);
-      }
-    } catch (error) {
-      console.error('Error al eliminar el producto:', error.message);
-    }
-  });
-
-
-  /* EVENTO ENVIAR MENSAJE DESDE chat.handlebars */
-  socket.on('sendMessage', async (message) => {
-    try {
-    } catch (error) {
-      console.error('Error al enviar el mensaje:', error.message);
-    }
-  });
-});
-
-
-/* RUTA /realtimeproducts */
-app.get('/realtimeproducts', async (req, res) => {
-  try {
-    const products = await productManager.getProducts();
-    res.render('realTimeProducts', {
-      pageTitle: 'Real Time Products',
-      products: products
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener los productos' });
-  }
-});
-
-
-/* RUTA /api/products */
-const productRouter = express.Router();
-
-
-/* OBTIENE LOS PRODUCTOS */
-productRouter.get('/', async (req, res) => {
-  try {
-    const limit = req.query.limit;
-    const products = await productManager.getProducts();
-    if (limit) {
-      res.json(products.slice(0, limit));
-    } else {
-      res.json(products);
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener los productos' });
-  }
-});
-
-
-/* PRODUCTO X ID */
-productRouter.get('/:pid', async (req, res) => {
-  try {
-    const productId = req.params.pid;
-    const product = await productManager.getProductById(productId);
-    if (product) {
-      res.json(product);
-    } else {
-      res.status(404).json({ error: 'Producto no encontrado' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener el producto' });
-  }
-});
-
-
-/* AGREGA UN PRODUCTO */
-productRouter.post('/', async (req, res) => {
-  try {
-    const product = req.body;
-    const productId = await productManager.addProduct(product);
-    res.json({ id: productId });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al agregar el producto' });
-  }
-});
-
-
-  /* ACTUALIZA EL PRODUCTO */
-productRouter.put('/:pid', async (req, res) => {
-  try {
-    const productId = req.params.pid;
-    const updatedFields = req.body;
-    const success = await productManager.updateProduct(productId, updatedFields);
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Producto no encontrado' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar el producto' });
-  }
-});
-
-
-  /* ELIMINA UN PRODUCTO */
-productRouter.delete('/:pid', async (req, res) => {
-  try {
-    const productId = req.params.pid;
-    const success = await productManager.deleteProduct(productId);
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Producto no encontrado' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar el producto' });
-  }
-});
-
-
-  /* RUTA /api/carts */
-const cartRouter = express.Router();
-
-
-  /* NUEVO CARRITO */
-cartRouter.post('/', (req, res) => {
-  const newCart = cartManager.createCart();
-  res.json({ message: 'Nuevo carrito creado' });
-});
-
-
-  /* LLEGA LISTA DE PRODUCTO DEL CARRITO */
-cartRouter.get('/:cid', (req, res) => {
-  const cartId = req.params.cid;
-  const cart = cartManager.getCart(cartId);
-  if (cart) {
-    const products = cart.getProducts();
-    res.json(products);
-  } else {
-    res.status(404).json({ error: 'Carrito no encontrado' });
-  }
-});
-
-
-  /* AGREGA PRODUCTO AL CARRITO */
-cartRouter.post('/:cid/product/:pid', (req, res) => {
-  const cartId = req.params.cid;
-  const productId = req.params.pid;
-  const cart = cartManager.getCart(cartId);
-  if (cart) {
-    cart.addProduct(productId);
-    res.json({ message: 'Producto agregado al carrito' });
-  } else {
-    res.status(404).json({ error: 'Carrito no encontrado' });
-  }
-});
-
-
-/* EXPRESS PARA EL ENRUTADOR DE PRODUCTOS */
-app.use('/api/products', express.json());
-app.use('/api/products', productRouter);
-
-
-/* CONFIGURACION DEL EXPRESS PARA EL ENRUTADOR DE CARRITOS */
-app.use('/api/carts', express.json());
-app.use('/api/carts', cartRouter);
 
 
 module.exports = app;
