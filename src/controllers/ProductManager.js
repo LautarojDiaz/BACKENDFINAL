@@ -8,15 +8,19 @@ class ProductManager extends EventEmitter {
   }
 
   /* AGREGAR UN NUEVO PRODUCTO A LA LISTA DE PRODUCTOS */
-  async addProduct(product) {
-    const products = await this.getProductsFromDB();
-    const newProductId = this.getNextProductId(products);
-    const newProduct = { id: newProductId, ...product };
-    products.push(newProduct);
-    await this.saveProductsToDB(products);
-    this.emit('productAdded', newProduct); // Emitir evento de producto agregado
-    return newProductId;
-  }
+async addProduct(product) {
+  try {
+      const products = await this.getProductsFromDB();
+      const newProductId = this.getNextProductId(products);
+      const newProduct = { id: newProductId, ...product };
+      products.push(newProduct);
+      await this.saveProductsToDB(products);
+      this.emit('productAdded', newProduct); // Emitir evento de producto agregado
+      return newProductId;
+    } catch (error) {
+      throw new Error('Error al agregar el producto al carrito');
+    }
+}
 
   /* OBTENER LA LISTA COMPLETA DE PRODUCTOS */
   async getProducts() {
@@ -24,14 +28,14 @@ class ProductManager extends EventEmitter {
   }
 
   /* OBTENER UN PRODUCTO POR SU ID */
-  async getProductById(id) {
+async getProductById(id) {
     const products = await this.getProductsFromDB();
     id = parseInt(id, 10); // Parsear el ID a número con base 10
     return products.find((product) => product.id === id);
-  }
+}
 
   /* ACTUALIZAR UN PRODUCTO EXISTENTE */
-  async updateProduct(id, updatedFields) {
+async updateProduct(id, updatedFields) {
     const products = await this.getProductsFromDB();
     id = parseInt(id, 10); // Parsear el ID a número con base 10
     const index = products.findIndex((product) => product.id === id);
@@ -41,10 +45,10 @@ class ProductManager extends EventEmitter {
       return true;
     }
     return false;
-  }
+}
 
   /* ELIMINAR UN PRODUCTO POR SU ID */
-  async deleteProduct(id) {
+async deleteProduct(id) {
     const products = await this.getProductsFromDB();
     id = parseInt(id, 10); // Parsear el ID a número con base 10
     const index = products.findIndex((product) => product.id === id);
@@ -55,29 +59,29 @@ class ProductManager extends EventEmitter {
       return true;
     }
     return false;
-  }
+}
 
   /* OBTENER EL PRÓXIMO ID DISPONIBLE PARA UN NUEVO PRODUCTO */
-  getNextProductId(products) {
+getNextProductId(products) {
     if (products.length === 0) {
       return 1;
     }
     const maxId = Math.max(...products.map((product) => product.id));
     return maxId + 1;
-  }
+}
 
   /* LEER LOS PRODUCTOS DESDE LA BASE DE DATOS */
-  async getProductsFromDB() {
+async getProductsFromDB() {
     try {
       const fileContents = await fs.readFile(this.path, 'utf-8');
       return JSON.parse(fileContents);
     } catch (error) {
       throw new Error('Error al leer el archivo de productos');
     }
-  }
+}
 
   /* GUARDAR LOS PRODUCTOS EN LA BASE DE DATOS */
-  async saveProductsToDB(products) {
+async saveProductsToDB(products) {
     try {
       await fs.writeFile(this.path, JSON.stringify(products, null, 2));
     } catch (error) {
@@ -85,5 +89,6 @@ class ProductManager extends EventEmitter {
     }
   }
 }
+
 
 module.exports = ProductManager;
