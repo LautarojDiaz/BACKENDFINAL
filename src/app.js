@@ -22,11 +22,105 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const crypto = require('crypto');
 
-const PORT = 3000;
+const PORT = 3001;
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+
+
+
+const { MongoClient, ServerApiVersion } = require('mongodb');
+
+// Configura el nuevo usuario y contraseña
+const username = "lautarojdiaz";
+const password = "sevienela7ma";
+
+// Construye la cadena de conexión con las credenciales
+const uri = `mongodb+srv://${username}:${password}@cluster0.smqncp0.mongodb.net/?retryWrites=true&w=majority`;
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    await client.connect();
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    await client.close();
+  }
+}
+run().catch(console.dir);
+
+
+
+
+  /* ESTRATEGIA D REGISTRO */
+passport.use('local-register', new LocalStrategy(
+  async (username, password, done) => {
+    try {
+      const existingUser = await userModel.findOne({ username });
+      if (existingUser) {
+        return done(null, false, { message: 'El nombre de usuario ya está en uso' });
+      }
+      const newUser = new userModel({ username, password });
+      const salt = await bcrypt.genSalt(10);
+      newUser.password = await bcrypt.hash(password, salt);
+      await newUser.save();
+      return done(null, newUser);
+    } catch (error) {
+      return done(error);
+    }
+  }
+));
+
+
+  /* GENERA Token JWT */
+app.post('/login', passport.authenticate('local', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login',
+  failureFlash: true
+}), (req, res) => {
+  const token = jwt.sign({ id: req.user.id }, 'contraseña1234');
+  res.cookie('token', token); 
+  res.redirect('/dashboard');
+});
+
+
+  /* OBTENCION DEL TOKEN */
+  app.get('/current-user', (req, res) => {
+    const token = req.cookies.token; 
+    if (!token) {
+      return res.status(401).json({ message: 'Token no encontrado' });
+    }
+  
+    jwt.verify(token, 'contraseña1234', (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Token inválido' });
+      }
+      userModel.findById(decoded.id, (err, user) => {
+        if (err) {
+          return res.status(500).json({ message: 'Error al buscar usuario' });
+        }
+        if (!user) {
+          return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+  
+        return res.status(200).json({ user });
+      });
+    });
+  });
+  
 
   /* Configuración de jwtOptions */
 const jwtOptions = {
