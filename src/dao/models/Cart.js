@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
-/* ESQUEMA DEL CARRITO */
+
+  /* ESQUEMA DEL CARRITO */
 const cartSchema = new mongoose.Schema({
   products: [
     {

@@ -1,5 +1,14 @@
-const Cart = require('../models/Cart');
+const CartRepository = require('../repositories/CartRepository'); const cartRepository = new CartRepository();
 
 
-module.exports = {
-};
+  /* SERVICIO D CARRITO */
+class CartService {
+  async createCart(cartData) {
+    return cartRepository.create(cartData);
+  }
+  async getCartById(cartId) {
+    return cartRepository.findById(cartId);
+  }
+}
+
+module.exports = CartService;

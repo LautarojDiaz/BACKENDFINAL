@@ -1,10 +1,13 @@
 const express = require('express');
 const Cart = require('../dao/models/Cart');
+const CartController = require('../controllers/CartController');
+const TicketController = require('../controllers/TicketController');
+const { checkStock } = require('../middleware/checkStock');
 
 const router = express.Router();
 
 
-    /* CREA NUEVO CARRO */
+  /* CREA NUEVO CARRITO */
 router.post('/', async (req, res) => {
   try {
     const newCart = await Cart.create({});
@@ -15,7 +18,7 @@ router.post('/', async (req, res) => {
 });
 
 
-    /* RUTA PARA RECIBIR UN CARRITO X SU ID */
+  /* OBTIENE UN CARRITO X ID */
 router.get('/:cartId', async (req, res) => {
   try {
     const cartId = req.params.cartId;
@@ -31,7 +34,7 @@ router.get('/:cartId', async (req, res) => {
 });
 
 
-    /* AGREGA PRODUCTO AL CARRITO */
+  /* AGREGA PRODUCTO AL CARRITO */
 router.post('/:cartId/product/:productId', async (req, res) => {
   try {
     const cartId = req.params.cartId;
@@ -48,5 +51,9 @@ router.post('/:cartId/product/:productId', async (req, res) => {
     res.status(500).json({ error: 'Error al agregar el producto al carrito' });
   }
 });
+
+
+  /* FINALIZA LA COMPRA DEL CARRITO */
+router.post('/:cid/purchase', checkStock, CartController.purchaseCart, TicketController.generateTicket);
 
 module.exports = router;

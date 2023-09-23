@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+
+    /* ESQUEMA Y MODELO D PRODUCTOS */
 const cartSchema = new mongoose.Schema({
 });
 

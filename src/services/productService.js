@@ -1,4 +1,20 @@
-const Product = require('../models/Product');
+  /* SERVICIO D PRODUCTOS */
+class ProductService {
+  constructor(productRepository) {
+    this.productRepository = productRepository;
+  }
 
-module.exports = {
-};
+  async getAllProducts() {
+    return this.productRepository.getAllProducts();
+  }
+
+  async getProductById(id) {
+    return this.productRepository.getProductById(id);
+  }
+
+  async createProduct(productData) {
+    return this.productRepository.createProduct(productData);
+  }
+}
+
+module.exports = ProductService;

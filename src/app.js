@@ -1,45 +1,140 @@
 const express = require('express');
 const session = require('express-session');
-const path = require('path');
 const http = require('http');
 const socketIO = require('socket.io');
 const passport = require('passport');
+const path = require('path');
 const LocalStrategy = require('passport-local').Strategy;
 const GitHubStrategy = require('passport-github').Strategy;
 const bcrypt = require('bcrypt');
-const { check, validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 const userModel = require('./models/userModel');
 const authRoutes = require('./routes/authRoutes');
 const ProductManager = require('./controllers/ProductManager');
 const CartManager = require('./controllers/CartController');
 const ProductModel = require('./models/ProductModel');
-const cartRoutes = require('./dao/fileManager/cart.routes');
-const productRoutes = require('./dao/fileManager/product.routes');
-const CartController = require('./controllers/CartController');
-const router = express.Router();
-const JwtStrategy = require('passport-jwt').Strategy;
-const ExtractJwt = require('passport-jwt').ExtractJwt;
+const productRoutes = require('./routes/productRoutes');
+const CartDAO = require('./dao/CartDAO');
+const ProductDAO = require('./dao/ProductDAO');
+const ProductRepository = require('./repositories/ProductRepository');
+const ProductService = require('./services/ProductService');
+const purchaseRoutes = require('./routes/purchaseRoutes'); 
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const EmailService = require('./services/emailService');
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const { Ticket } = require('../config/db'); 
+const ticketRoutes = require('./routes/ticketRoutes');
+const ProductController = require('./controllers/ProductController');
+const CartController = require('./controllers/CartController');
+const TicketController = require('./controllers/TicketController');
 
-const PORT = 3001;
-const app = express();
+require('dotenv').config();
+
+
 const server = http.createServer(app);
 const io = socketIO(server);
+const PORT = process.env.PORT || 3000;
 
 
 
+  /* CONFIGURACION D RUTAS */
+app.use('/cart', CartController);
+app.use('/products', productRoutes);
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
 
-// Configura el nuevo usuario y contraseña
+const productDAO = new ProductDAO();
+const productRepository = new ProductRepository(productDAO);
+const productService = new ProductService(productRepository);
+
+
+const app = express();
+app.use('/cart', CartController);
+
+
+  /* PROTEGE RUTA ADMIN */
+app.get('/admin', authorize('admin'), (req, res) => {
+  res.send('Bienvenido, administrador');
+});
+
+
+const emailService = new EmailService();
+
+app.use('/cart', CartController);
+
+
+require('dotenv').config(); 
+
+
+  /* VARIABLES DEL ENTORNO */
+const emailUser = process.env.EMAIL_USER;
+const emailPassword = process.env.EMAIL_PASSWORD;
+const dbUrl = process.env.DB_URL;
+const apiKey = process.env.API_KEY;
+
+
+app.get('/admin', checkAdmin, (req, res) => {
+  res.send('Bienvenido, administrador');
+});
+
+
+  /* CONFIGURA RUTA Y LOGICA D LA APP */
+app.get('/', (req, res) => {
+  const recipientEmail = 'destinatario@example.com';
+  const subject = 'Asunto del correo';
+  const body = 'Cuerpo del correo';
+
+  emailService.sendEmail(recipientEmail, subject, body)
+    .then(() => {
+      res.send('Correo enviado exitosamente');
+    })
+    .catch((error) => {
+      res.status(500).send('Error al enviar el correo: ' + error.message);
+    });
+});
+
+require('dotenv').config();
+
+const uriMongo = process.env.URI_MONGO;
+
+
+  /* CONFIGURA CONEXION A BASE D DATOS MongoDB */
+mongoose.connect(uriMongo, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Conexión a MongoDB exitosa'))
+  .catch((err) => console.error('Error al conectar a MongoDB:', err));
+
+
+  /* FUNCION ENVIA CORREO ELECTRONICO */
+const sendEmail = async (to, subject, text) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USERNAME,
+    to,
+    subject,
+    text,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Correo electrónico enviado con éxito');
+  } catch (error) {
+    console.error('Error al enviar el correo electrónico:', error);
+  }
+};
+
+
+  /* CONFIGURA NUEVO USUARIO Y CONTRASEÑA */
 const username = "lautarojdiaz";
 const password = "sevienela7ma";
 
-// Construye la cadena de conexión con las credenciales
+
+  /* CADENA CONEXION CON LAS CREDENCIALES */
 const uri = `mongodb+srv://${username}:${password}@cluster0.smqncp0.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+
+  /* MongoClient a MongoClientOptions */
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -50,13 +145,10 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
     await client.close();
   }
 }
@@ -64,8 +156,10 @@ run().catch(console.dir);
 
 
 
+app.use('/carts', purchaseRoutes); 
 
-  /* ESTRATEGIA D REGISTRO */
+
+/* ESTRATEGIA D REGISTRO */
 passport.use('local-register', new LocalStrategy(
   async (username, password, done) => {
     try {
@@ -85,7 +179,7 @@ passport.use('local-register', new LocalStrategy(
 ));
 
 
-  /* GENERA Token JWT */
+/* GENERA Token JWT */
 app.post('/login', passport.authenticate('local', {
   successRedirect: '/dashboard',
   failureRedirect: '/login',
@@ -97,39 +191,38 @@ app.post('/login', passport.authenticate('local', {
 });
 
 
-  /* OBTENCION DEL TOKEN */
-  app.get('/current-user', (req, res) => {
-    const token = req.cookies.token; 
-    if (!token) {
-      return res.status(401).json({ message: 'Token no encontrado' });
+/* OBTENCION DEL TOKEN */
+app.get('/current-user', (req, res) => {
+  const token = req.cookies.token; 
+  if (!token) {
+    return res.status(401).json({ message: 'Token no encontrado' });
+  }
+
+  jwt.verify(token, 'contraseña1234', (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: 'Token inválido' });
     }
-  
-    jwt.verify(token, 'contraseña1234', (err, decoded) => {
+    userModel.findById(decoded.id, (err, user) => {
       if (err) {
-        return res.status(401).json({ message: 'Token inválido' });
+        return res.status(500).json({ message: 'Error al buscar usuario' });
       }
-      userModel.findById(decoded.id, (err, user) => {
-        if (err) {
-          return res.status(500).json({ message: 'Error al buscar usuario' });
-        }
-        if (!user) {
-          return res.status(404).json({ message: 'Usuario no encontrado' });
-        }
-  
-        return res.status(200).json({ user });
-      });
+      if (!user) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      return res.status(200).json({ user });
     });
   });
-  
+});
 
-  /* Configuración de jwtOptions */
+
+/* Configuración de jwtOptions */
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: 'contraseña1234', 
 };
 
-
-  /* PASSPORT CON jwtOptions */
+/* PASSPORT CON jwtOptions */
 passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
   try {
     const user = await userModel.findById(jwtPayload.id);
@@ -144,7 +237,7 @@ passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
 }));
 
 
-  /* AUTENTICACION LOCAL */
+/* AUTENTICACION LOCAL */
 passport.use(new LocalStrategy(
   async (username, password, done) => {
     try {
@@ -165,7 +258,7 @@ passport.use(new LocalStrategy(
 ));
 
 
-  /* AUTENTICACION DE GITHUB */
+/* AUTENTICACION DE GITHUB */
 passport.use(new GitHubStrategy({
   clientID: 'aec774903a91c758909e',
   clientSecret: 'xxxx',
@@ -194,7 +287,7 @@ app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
-  
+
   /* GENERA CLAVE PARA LA SESIÓN */
 const secretKey = crypto.randomBytes(32).toString('hex');
 
@@ -211,7 +304,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-/* SERIALIZACIÓN DE USUARIO */
+
+  /* SERIALIZACIÓN DE USUARIO */
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -287,11 +381,10 @@ io.on('connection', (socket) => {
   });
 });
 
-
-  /* Iniciar el servidor */
+  
+  /* INICIA EL SERVER */
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
-
 
 module.exports = app;
