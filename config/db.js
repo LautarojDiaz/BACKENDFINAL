@@ -1,4 +1,3 @@
-// config/db.js
 const mongoose = require('mongoose');
 
 mongoose.connect('mongodb://localhost:27017/tickets', {
@@ -7,8 +6,6 @@ mongoose.connect('mongodb://localhost:27017/tickets', {
 });
 
 const ticketSchema = new mongoose.Schema({
-  // Define la estructura del modelo Ticket aquí
-  // Por ejemplo: title, description, createdBy, etc.
 });
 
 const Ticket = mongoose.model('Ticket', ticketSchema);
@@ -16,4 +13,3 @@ const Ticket = mongoose.model('Ticket', ticketSchema);
 module.exports = {
   Ticket,
 };
-

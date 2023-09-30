@@ -6,7 +6,6 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GitHubStrategy = require('passport-github').Strategy;
 const bcrypt = require('bcrypt');
-const userModel = require('./models/userModel'); // Elimina esta línea si no se utiliza userModel en app.js
 const CartManager = require('./controllers/CartController');
 const productRoutes = require('./routes/productRoutes');
 const CartDAO = require('./dao/CartDAO');
@@ -20,6 +19,7 @@ const EmailService = require('./services/emailService');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Ticket } = require('../config/db');
 const ticketRoutes = require('./routes/ticketRoutes');
+const errorDictionary = require('./utils/errorDictionary');
 
 require('dotenv').config();
 
@@ -28,38 +28,69 @@ const server = http.createServer(app);
 const io = socketIO(server);
 const PORT = process.env.PORT || 3000;
 
-/* CONFIGURACION DE RUTAS */
-app.use('/cart', CartController); 
+
+  /* MODULO D MOCKING */
+const mockingRouter = require('./mocking');
+app.use(mockingRouter);
+
+
+
+  /* ERORRES PERSONALIDASADOS */
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Algo salió mal!' });
+});
+
+
+  /* Mongo Y DATOS D TICKETS */
+mongoose.connect('mongodb://localhost:27017/tickets', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+app.get('/', async (req, res) => {
+  try {
+    const tickets = await Ticket.find();
+    console.log(tickets);
+    res.send('Datos de los tickets impresos en la consola.');
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error al obtener los datos de los tickets.');
+  }
+});
+
+
+  /* CONFIGURACION DE RUTAS */
+app.use('/cart', CartDAO); 
 app.use('/products', productRoutes);
-
-
 const productDAO = new ProductDAO();
 const productRepository = new ProductRepository(productDAO);
 const productService = new ProductService(productRepository);
 
-/* PROTEGE RUTA ADMIN */
+
+  /* PROTEGE RUTA ADMIN */
 app.get('/admin', authorize('admin'), (req, res) => {
   res.send('Bienvenido, administrador');
 });
 
 const emailService = new EmailService();
 
-/* VARIABLES DEL ENTORNO */
+
+  /* VARIABLES DEL ENTORNO */
 const emailUser = process.env.EMAIL_USER;
 const emailPassword = process.env.EMAIL_PASSWORD;
 const dbUrl = process.env.DB_URL;
 const apiKey = process.env.API_KEY;
-
 app.get('/admin', checkAdmin, (req, res) => {
   res.send('Bienvenido, administrador');
 });
 
-/* CONFIGURA RUTA Y LOGICA DE LA APP */
+
+  /* CONFIGURA RUTA Y LOGICA DE LA APP */
 app.get('/', (req, res) => {
   const recipientEmail = 'destinatario@example.com';
   const subject = 'Asunto del correo';
   const body = 'Cuerpo del correo';
-
   emailService.sendEmail(recipientEmail, subject, body)
     .then(() => {
       res.send('Correo enviado exitosamente');
@@ -71,7 +102,8 @@ app.get('/', (req, res) => {
 
 const uriMongo = process.env.URI_MONGO;
 
-/* CONFIGURA CONEXION A BASE DE DATOS MongoDB */
+
+  /* CONFIGURA CONEXION A BASE DE DATOS MongoDB */
 mongoose.connect(uriMongo, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -79,7 +111,8 @@ mongoose.connect(uriMongo, {
   .then(() => console.log('Conexión a MongoDB exitosa'))
   .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
-/* FUNCION ENVIA CORREO ELECTRONICO */
+
+  /* FUNCION ENVIA CORREO ELECTRONICO */
 const sendEmail = async (to, subject, text) => {
   const mailOptions = {
     from: process.env.EMAIL_USERNAME,
@@ -87,7 +120,6 @@ const sendEmail = async (to, subject, text) => {
     subject,
     text,
   };
-
   try {
     await transporter.sendMail(mailOptions);
     console.log('Correo electrónico enviado con éxito');
@@ -97,14 +129,16 @@ const sendEmail = async (to, subject, text) => {
 };
 
 
-/* CONFIGURA NUEVO USUARIO Y CONTRASEÑA */
+  /* CONFIGURA NUEVO USUARIO Y CONTRASEÑA */
 const username = "lautarojdiaz";
 const password = "sevienela7ma";
 
-/* CADENA CONEXION CON LAS CREDENCIALES */
+
+  /* CADENA CONEXION CON LAS CREDENCIALES */
 const uri = `mongodb+srv://${username}:${password}@cluster0.smqncp0.mongodb.net/?retryWrites=true&w=majority`;
 
-/* MongoClient a MongoClientOptions */
+
+  /* MongoClient a MongoClientOptions */
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -112,7 +146,6 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-
 async function run() {
   try {
     await client.connect();
@@ -126,7 +159,8 @@ run().catch(console.dir);
 
 app.use('/carts', purchaseRoutes);
 
-/* ESTRATEGIA DE REGISTRO */
+
+  /* ESTRATEGIA DE REGISTRO */
 passport.use('local-register', new LocalStrategy(
   async (username, password, done) => {
     try {
@@ -145,7 +179,8 @@ passport.use('local-register', new LocalStrategy(
   }
 ));
 
-/* Genera Token JWT */
+
+  /* Genera Token JWT */
 app.post('/login', passport.authenticate('local', {
   successRedirect: '/dashboard',
   failureRedirect: '/login',
@@ -156,13 +191,13 @@ app.post('/login', passport.authenticate('local', {
   res.redirect('/dashboard');
 });
 
-/* OBTENCIÓN DEL TOKEN */
+  
+  /* OBTENCIÓN DEL TOKEN */
 app.get('/current-user', (req, res) => {
   const token = req.cookies.token;
   if (!token) {
     return res.status(401).json({ message: 'Token no encontrado' });
   }
-
   jwt.verify(token, 'contraseña1234', (err, decoded) => {
     if (err) {
       return res.status(401).json({ message: 'Token inválido' });
@@ -180,13 +215,15 @@ app.get('/current-user', (req, res) => {
   });
 });
 
-/* Configuración de jwtOptions */
+
+  /* CONFIGURACION jwtOptions */
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: 'contraseña1234',
 };
 
-/* PASSPORT CON jwtOptions */
+
+  /* PASSPORT CON jwtOptions */
 passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
   try {
     const user = await userModel.findById(jwtPayload.id);
@@ -200,7 +237,8 @@ passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
   }
 }));
 
-/* AUTENTICACION LOCAL */
+
+  /* AUTENTICACION LOCAL */
 passport.use(new LocalStrategy(
   async (username, password, done) => {
     try {
@@ -220,7 +258,8 @@ passport.use(new LocalStrategy(
   }
 ));
 
-/* AUTENTICACION DE GITHUB */
+
+  /* AUTENTICACION DE GITHUB */
 passport.use(new GitHubStrategy({
   clientID: 'aec774903a91c758909e',
   clientSecret: 'xxxx',
@@ -228,7 +267,8 @@ passport.use(new GitHubStrategy({
 }, (accessToken, refreshToken, profile, done) => {
 }));
 
-/* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
+
+  /* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
 mongoose.connect('mongodb://localhost:27017/ecommerce', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -236,7 +276,8 @@ mongoose.connect('mongodb://localhost:27017/ecommerce', {
   .then(() => console.log('Conexión a MongoDB exitosa'))
   .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
-/* CONFIGURACION Handlebars */
+
+  /* CONFIGURACION Handlebars */
 const exphbs = require('express-handlebars');
 const hbs = exphbs.create({
   defaultLayout: 'main',
@@ -247,25 +288,28 @@ app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
-/* GENERA CLAVE PARA LA SESIÓN */
+
+  /* GENERA CLAVE PARA LA SESIÓN */
 const secretKey = crypto.randomBytes(32).toString('hex');
 
-/* MIDDLEWARE DE SESIÓN */
+
+  /* MIDDLEWARE DE SESIÓN */
 app.use(session({
   secret: secretKey,
   resave: true,
   saveUninitialized: true
 }));
 
-/* INICIALIZACIÓN DE PASSPORT */
+
+  /* INICIALIZACIÓN DE PASSPORT */
 app.use(passport.initialize());
 app.use(passport.session());
 
-/* SERIALIZACIÓN DE USUARIO */
+
+  /* SERIALIZACIÓN DE USUARIO */
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
-
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await userModel.findById(id);
@@ -275,7 +319,8 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-/* RUTAS DE AUTENTICACION */
+
+  /* RUTAS DE AUTENTICACION */
 app.post('/register', passport.authenticate('local-register', {
   successRedirect: '/dashboard',
   failureRedirect: '/register',
@@ -313,18 +358,22 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-/* RUTA DE INICIO */
+  
+  /* RUTA DE INICIO */
 app.get('/', (req, res) => {
   res.render('index', { user: req.user });
 });
 
-/* RUTAS DEL CARRITO */
+
+  /* RUTAS DEL CARRITO */
 app.use('/cart', CartController);
 
-/* RUTAS DE PRODUCTOS */
+
+  /* RUTAS DE PRODUCTOS */
 app.use('/products', productRoutes);
 
-/* SERVIDOR DE SOCKET.IO */
+
+  /* SERVIDOR DE SOCKET.IO */
 io.on('connection', (socket) => {
   console.log('Usuario conectado');
   socket.on('disconnect', () => {
@@ -332,7 +381,8 @@ io.on('connection', (socket) => {
   });
 });
 
-/* INICIA EL SERVIDOR */
+
+  /* INICIA EL SERVIDOR */
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });

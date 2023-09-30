@@ -3,7 +3,6 @@ class CartManager{
       this.carts = {};
 }
   
-
   /* CREA UN NUEVO CARRITO Y DEVUELVE EL ID */
 createCart() {
   const cartId = this.generateCartId();

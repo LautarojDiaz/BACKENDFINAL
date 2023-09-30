@@ -1,4 +1,3 @@
-
   /* GESTOR D PRODUCTOS */
 class Product {
     constructor(id, name, price) {

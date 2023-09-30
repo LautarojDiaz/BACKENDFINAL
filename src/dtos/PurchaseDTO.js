@@ -1,4 +1,3 @@
-
   /* CLASE DTO */
 class ProductDTO {
   constructor(name, price, description) {
