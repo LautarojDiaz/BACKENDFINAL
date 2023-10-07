@@ -16,6 +16,4 @@ async function checkStock(req, res, next) {
   }
 }
 
-module.exports = {
-  checkStock,
-};
+module.exports = {checkStock,};

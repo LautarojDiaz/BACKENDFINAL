@@ -1,5 +1,5 @@
-
-  /* CustomError */
+  /* DEFINICION D ERRORES PERSONALIZAMOS
+    Y ERRORES */
 class CustomError extends Error {
   constructor(code, message) {
     super(message);
@@ -12,12 +12,14 @@ const errorDictionary = {
   PRODUCT_ALREADY_EXISTS: new CustomError(400, 'El producto ya existe.'),
 };
 
-
-  /* ErrorHandler */
 function errorHandler(err, req, res, next) {
   console.error(err.stack);
-  res.status(500).json({ error: '¡Algo salió mal!', title: 'Error Interno del Servidor' });
+  console.log('Manejando error:', err); 
+  if (err instanceof CustomError) {
+    res.status(err.code).json({ error: err.message });
+  } else {
+    res.status(500).json({ error: '¡Algo salió mal!', title: 'Error Interno del Servidor' });
+  }
 }
 
-
-  module.exports = { CustomError, errorDictionary };
+module.exports = { CustomError, errorDictionary, errorHandler };

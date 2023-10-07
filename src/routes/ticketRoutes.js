@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { checkAdmin } = require('../middleware/authorization');
-const { Ticket } = require('../config/db');
+const { Ticket } = require('../controllers/db');
 
 
   /* CREA UN TICKET (REQUIERE AUTORICION D ADMIN) */

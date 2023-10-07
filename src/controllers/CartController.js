@@ -1,14 +1,14 @@
-const Cart = require('../models/Cart'); 
+const Cart = require('../models/Cart');
 
-/* ACTUALIZA CARRO DESPUES D LA COMPRA */
-async function updateCartAfterPurchase(cart) {
-  const productsToKeep = cart.products.filter((product) => {
-    return true; 
-  });
-  cart.products = productsToKeep;
-  await cart.save();
+class CartController {
+  /* ACTUALIZA CARRO DESPUÉS DE LA COMPRA */
+  async updateCartAfterPurchase(cart) {
+    const productsToKeep = cart.products.filter((product) => {
+      return true;
+    });
+    cart.products = productsToKeep;
+    await cart.save();
+  }
 }
 
-module.exports = {
-  updateCartAfterPurchase,
-};
+module.exports = new CartController();

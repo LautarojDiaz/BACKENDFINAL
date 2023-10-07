@@ -1,4 +1,7 @@
 const express = require('express');
+const { Strategy: JwtStrategy } = require('passport-jwt');
+const path = require('path');
+const mongoose = require('mongoose');
 const session = require('express-session');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -6,20 +9,25 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GitHubStrategy = require('passport-github').Strategy;
 const bcrypt = require('bcrypt');
-const CartManager = require('./controllers/CartController');
-const productRoutes = require('./routes/productRoutes');
 const CartDAO = require('./dao/CartDAO');
-const ProductDAO = require('./dao/ProductDAO');
+const ProductDAO = require('./dao/productDAO');
 const ProductRepository = require('./repositories/ProductRepository');
-const ProductService = require('./services/ProductService');
+const ProductService = require('./services/productService');
 const purchaseRoutes = require('./routes/purchaseRoutes');
+const productRoutes = require('./routes/productRoutes');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const EmailService = require('./services/emailService');
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const { Ticket } = require('../config/db');
+const CartController = require('../src/controllers/CartController');
+const { Ticket } = require('../src/controllers/db');
 const ticketRoutes = require('./routes/ticketRoutes');
-const errorDictionary = require('./utils/errorDictionary');
+const errorDictionary = require('../src/utils/errorDictionary');
+const { CustomError } = require('../src/middleware/errorHandler');
+const { ExtractJwt } = require('passport-jwt');
+const { checkAdmin } = require('../src/middleware/authorization'); 
+const { devLogger, prodLogger } = require('../logger'); 
+const userModel = require('../src/models/userModel');
 
 require('dotenv').config();
 
@@ -28,105 +36,79 @@ const server = http.createServer(app);
 const io = socketIO(server);
 const PORT = process.env.PORT || 3000;
 
-
-  /* MODULO D MOCKING */
-const mockingRouter = require('./mocking');
-app.use(mockingRouter);
-
-
-
-  /* ERORRES PERSONALIDASADOS */
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Algo salió mal!' });
-});
+        
+      /* Pude solucionar bastantes errores, pero aun siguen, supuestamente el puerto 3000 esta funcionando, pero
+      al momento de entrar al localhost, me da error, no se en en pantalla.
+      Y ademas, me esta generando error el mongoose.connect(), yo entiendo d establecer la conexion la app Node
+      y eso va  a MongoDB usando la informacion, y eso encadena lleva a MongoDB URI
+      Me dice que lo tengo duplicado al mongoose.connect(), lo que no esta permitido, pero por lo que estuve
+      viendo lo tengo en db.js solamente (en controllers), porque antes lo tenia en una carpeta lamada config, pero
+      no se porque no me aparecia en la const al momento de importar, y dije, bueno, lo meto a ahi, yo simplemente quiero
+      que me funcione */
 
 
-  /* Mongo Y DATOS D TICKETS */
-mongoose.connect('mongodb://localhost:27017/tickets', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
 
-app.get('/', async (req, res) => {
-  try {
-    const tickets = await Ticket.find();
-    console.log(tickets);
-    res.send('Datos de los tickets impresos en la consola.');
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error al obtener los datos de los tickets.');
-  }
-});
+  /* URL EN FUNCION DEL ENTORNO */
+const isProduction = process.env.NODE_ENV === 'production';
+const mongoURI = isProduction ? process.env.PRODUCTION_DB_URI : 'mongodb://localhost:27017/ecommerce';
+console.log('MongoURI:', mongoURI);
+console.log('Antes de conectar a MongoDB');
 
 
-  /* CONFIGURACION DE RUTAS */
-app.use('/cart', CartDAO); 
-app.use('/products', productRoutes);
-const productDAO = new ProductDAO();
-const productRepository = new ProductRepository(productDAO);
-const productService = new ProductService(productRepository);
-
-
-  /* PROTEGE RUTA ADMIN */
-app.get('/admin', authorize('admin'), (req, res) => {
-  res.send('Bienvenido, administrador');
-});
-
-const emailService = new EmailService();
-
-
-  /* VARIABLES DEL ENTORNO */
-const emailUser = process.env.EMAIL_USER;
-const emailPassword = process.env.EMAIL_PASSWORD;
-const dbUrl = process.env.DB_URL;
-const apiKey = process.env.API_KEY;
-app.get('/admin', checkAdmin, (req, res) => {
-  res.send('Bienvenido, administrador');
-});
-
-
-  /* CONFIGURA RUTA Y LOGICA DE LA APP */
-app.get('/', (req, res) => {
-  const recipientEmail = 'destinatario@example.com';
-  const subject = 'Asunto del correo';
-  const body = 'Cuerpo del correo';
-  emailService.sendEmail(recipientEmail, subject, body)
-    .then(() => {
-      res.send('Correo enviado exitosamente');
-    })
-    .catch((error) => {
-      res.status(500).send('Error al enviar el correo: ' + error.message);
-    });
-});
-
-const uriMongo = process.env.URI_MONGO;
-
-
-  /* CONFIGURA CONEXION A BASE DE DATOS MongoDB */
-mongoose.connect(uriMongo, {
+          /* MONGO URI (ME DA ERROR) */
+mongoose.connect(mongoURI, { 
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => console.log('Conexión a MongoDB exitosa'))
-  .catch((err) => console.error('Error al conectar a MongoDB:', err));
+.then(() => {
+  console.log('Conexión a MongoDB establecida con éxito');
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  });
+})
+.catch((error) => {
+  console.error('Error al conectar a MongoDB:', error);
+});
+console.log('Después de conectar a MongoDB');
 
 
-  /* FUNCION ENVIA CORREO ELECTRONICO */
-const sendEmail = async (to, subject, text) => {
-  const mailOptions = {
-    from: process.env.EMAIL_USERNAME,
-    to,
-    subject,
-    text,
-  };
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log('Correo electrónico enviado con éxito');
-  } catch (error) {
-    console.error('Error al enviar el correo electrónico:', error);
+  /* MIDDLEWARE MANEJO D ERRORES */
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  if (err instanceof CustomError) {
+    res.status(err.code).json({ error: err.message });
+  } else {
+    res.status(500).json({ error: '¡Algo salió mal!', title: 'Error Interno del Servidor' });
   }
-};
+});
+
+
+  /* RUTA LANZA ERROR */
+app.get('/ruta', (req, res, next) => {
+  try {
+    const error = errorDictionary.PRODUCT_NOT_FOUND;
+    throw new CustomError(error.code, error.message);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+  /* REGISTRO D LOGS */
+app.get('/loggerTest', (req, res) => {
+  try {
+    devLogger.debug('Mensaje de prueba de depuración');
+    devLogger.info('Mensaje de prueba de información');
+    devLogger.warn('Mensaje de prueba de advertencia');
+    devLogger.error('Mensaje de prueba de error');
+    devLogger.fatal('Mensaje de prueba de fatal');
+
+    res.status(200).send('Prueba de registro exitosa');
+  } catch (error) {
+    devLogger.error('Error en la prueba de registro', error);
+    res.status(500).send('Error en la prueba de registro');
+  }
+});
 
 
   /* CONFIGURA NUEVO USUARIO Y CONTRASEÑA */
@@ -136,28 +118,6 @@ const password = "sevienela7ma";
 
   /* CADENA CONEXION CON LAS CREDENCIALES */
 const uri = `mongodb+srv://${username}:${password}@cluster0.smqncp0.mongodb.net/?retryWrites=true&w=majority`;
-
-
-  /* MongoClient a MongoClientOptions */
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
-async function run() {
-  try {
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    await client.close();
-  }
-}
-run().catch(console.dir);
-
-app.use('/carts', purchaseRoutes);
 
 
   /* ESTRATEGIA DE REGISTRO */
@@ -180,7 +140,7 @@ passport.use('local-register', new LocalStrategy(
 ));
 
 
-  /* Genera Token JWT */
+  /* Token JWT */
 app.post('/login', passport.authenticate('local', {
   successRedirect: '/dashboard',
   failureRedirect: '/login',
@@ -266,15 +226,6 @@ passport.use(new GitHubStrategy({
   callbackURL: 'http://localhost:3000/auth/github/callback'
 }, (accessToken, refreshToken, profile, done) => {
 }));
-
-
-  /* CONFIGURACION BASE DE DATOS MongoDB CON Mongoose */
-mongoose.connect('mongodb://localhost:27017/ecommerce', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('Conexión a MongoDB exitosa'))
-  .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
 
   /* CONFIGURACION Handlebars */
@@ -365,8 +316,16 @@ app.get('/', (req, res) => {
 });
 
 
-  /* RUTAS DEL CARRITO */
-app.use('/cart', CartController);
+  /* RUTA D CARRITO */
+app.use('/cart', (req, res, next) => {
+  CartController.updateCartAfterPurchase(req.cart) 
+    .then(() => {
+      next();
+    })
+    .catch((error) => {
+      next(error);
+    });
+});
 
 
   /* RUTAS DE PRODUCTOS */
@@ -380,7 +339,6 @@ io.on('connection', (socket) => {
     console.log('Usuario desconectado');
   });
 });
-
 
   /* INICIA EL SERVIDOR */
 server.listen(PORT, () => {

@@ -1,6 +1,6 @@
-const ProductDAO = require('../dao/ProductDAO');
+const ProductDAO = require('../dao/productDAO');
 const ProductRepository = require('../repositories/ProductRepository'); 
-const ProductService = require('../services/ProductService'); 
+const ProductService = require('../services/productService');
 
 const productDAO = new ProductDAO();
 const productRepository = new ProductRepository(productDAO);
