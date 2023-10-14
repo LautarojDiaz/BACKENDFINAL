@@ -25,7 +25,7 @@ const mongoose = require('mongoose');
   });
 
 
-// Crear el modelo 'Cart' basado en el esquema
+  /* MODELO CART */
 const Cart = mongoose.model('Cart', cartSchema);
 
 module.exports = Cart;

@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const Product = require('./models/Product');
 
 
   /* ESQUEMA DEL PRODUCTO */
@@ -9,6 +8,7 @@ const productSchema = new mongoose.Schema({
   description: { type: String },
   category: { type: String },
   availability: { type: Boolean, default: true },
+  owner: { type: String, ref: 'User', default: 'admin' } 
 });
 
 module.exports = mongoose.model('Product', productSchema);

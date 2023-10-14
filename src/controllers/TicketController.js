@@ -1,6 +1,4 @@
-
 const { Ticket } = require ('../controllers/db');
-
 const Cart = require('../models/Cart');
 
 /* GENERA TICKET CON LOS DETALLES DE LA COMPRA */
@@ -19,7 +17,5 @@ async function generateTicket(req, res, next) {
   }
 }
 
-module.exports = {
-  generateTicket,
-};
+module.exports = {generateTicket,};
 

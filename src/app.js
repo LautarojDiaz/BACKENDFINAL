@@ -21,6 +21,7 @@ const EmailService = require('./services/emailService');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const CartController = require('../src/controllers/CartController');
 const { Ticket } = require('../src/controllers/db');
+const mongooseDb = require('../src/controllers/db');
 const ticketRoutes = require('./routes/ticketRoutes');
 const errorDictionary = require('../src/utils/errorDictionary');
 const { CustomError } = require('../src/middleware/errorHandler');
@@ -34,18 +35,9 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3870;
 
-        
-      /* Pude solucionar bastantes errores, pero aun siguen, supuestamente el puerto 3000 esta funcionando, pero
-      al momento de entrar al localhost, me da error, no se en en pantalla.
-      Y ademas, me esta generando error el mongoose.connect(), yo entiendo d establecer la conexion la app Node
-      y eso va  a MongoDB usando la informacion, y eso encadena lleva a MongoDB URI
-      Me dice que lo tengo duplicado al mongoose.connect(), lo que no esta permitido, pero por lo que estuve
-      viendo lo tengo en db.js solamente (en controllers), porque antes lo tenia en una carpeta lamada config, pero
-      no se porque no me aparecia en la const al momento de importar, y dije, bueno, lo meto a ahi, yo simplemente quiero
-      que me funcione */
-
+require('dotenv').config();
 
 
   /* URL EN FUNCION DEL ENTORNO */
@@ -55,26 +47,24 @@ console.log('MongoURI:', mongoURI);
 console.log('Antes de conectar a MongoDB');
 
 
-          /* MONGO URI (ME DA ERROR) */
-mongoose.connect(mongoURI, { 
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('Conexión a MongoDB establecida con éxito');
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
-  });
-})
-.catch((error) => {
-  console.error('Error al conectar a MongoDB:', error);
-});
-console.log('Después de conectar a MongoDB');
+  /* FUNCION CONECTAR A BASE D DATOS */
+mongooseDb.connectToDatabase();
 
 
   /* MIDDLEWARE MANEJO D ERRORES */
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (err instanceof CustomError) {
+    res.status(err.code).json({ error: err.message });
+  } else {
+    res.status(500).json({ error: '¡Algo salió mal!', title: 'Error Interno del Servidor' });
+  }
+});
+
+
+  /* MIDDLEWARE PARA MANEJO D ERRORES */
+app.use((err, req, res, next) => {
+  console.error(err);
   if (err instanceof CustomError) {
     res.status(err.code).json({ error: err.message });
   } else {

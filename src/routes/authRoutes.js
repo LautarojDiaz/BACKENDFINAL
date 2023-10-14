@@ -1,8 +1,15 @@
 const express = require('express');
 const passport = require('passport');
 const userModel = require('../models/userModel');
+const emailController = require('../controllers/emailController');
+const resetPasswordController = require('../controllers/resetPasswordController');
 
+
+  /* RECUPERACION D CONTRASEÑA */
 const router = express.Router();
+router.post('/send-reset-email', emailController.sendPasswordResetEmail);
+router.post('/reset-password', resetPasswordController.resetPassword);
+
 
 router.get('/auth/github', passport.authenticate('github'));
 router.get('/auth/github/callback',
@@ -25,7 +32,7 @@ router.get('/auth/github/callback',
           }
         });
       } else {
-            /* SI NO EXISTE, CREA UN NUEVO REGISTRO EN LA BASE D DATOS */
+          /* SI NO EXISTE, CREA UN NUEVO REGISTRO EN LA BASE D DATOS */
         const newUser = new UserModel({
           email: githubProfile.email,
         });
@@ -33,7 +40,7 @@ router.get('/auth/github/callback',
         const savedUser = await newUser.save();
 
 
-            /* CONFIRMA NUEVO USUARIO Y LO MANDA AL Dashboard */
+  /* CONFIRMA NUEVO USUARIO Y LO MANDA AL Dashboard */
         req.login(savedUser, (err) => {
           if (err) {
             res.redirect('/login');
