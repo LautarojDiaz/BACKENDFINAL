@@ -1,7 +1,5 @@
 const express = require('express');
-const { Strategy: JwtStrategy } = require('passport-jwt');
 const path = require('path');
-const mongoose = require('mongoose');
 const session = require('express-session');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -18,17 +16,19 @@ const productRoutes = require('./routes/productRoutes');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const EmailService = require('./services/emailService');
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const CartController = require('../src/controllers/CartController');
-const { Ticket } = require('../src/controllers/db');
-const mongooseDb = require('../src/controllers/db');
+const { MongoClient } = require('mongodb');
+const { Ticket, connectToDatabase } = require('../src/controllers/db');
 const ticketRoutes = require('./routes/ticketRoutes');
 const errorDictionary = require('../src/utils/errorDictionary');
 const { CustomError } = require('../src/middleware/errorHandler');
 const { ExtractJwt } = require('passport-jwt');
-const { checkAdmin } = require('../src/middleware/authorization'); 
-const { devLogger, prodLogger } = require('../logger'); 
+const { checkAdmin } = require('../src/middleware/authorization');
+const { devLogger, prodLogger } = require('../logger');
 const userModel = require('../src/models/userModel');
+const swaggerSpec = require('../swagger');
+const swaggerUi = require('swagger-ui-express');
+const cartRoutes = require('../src/routes/cartRoutes');
+const productRoutes = require('../src/routes/productRoutes');
 
 require('dotenv').config();
 
@@ -40,15 +40,14 @@ const PORT = process.env.PORT || 3870;
 require('dotenv').config();
 
 
-  /* URL EN FUNCION DEL ENTORNO */
+/* URL EN FUNCION DEL ENTORNO */
 const isProduction = process.env.NODE_ENV === 'production';
 const mongoURI = isProduction ? process.env.PRODUCTION_DB_URI : 'mongodb://localhost:27017/ecommerce';
 console.log('MongoURI:', mongoURI);
 console.log('Antes de conectar a MongoDB');
 
-
-  /* FUNCION CONECTAR A BASE D DATOS */
-mongooseDb.connectToDatabase();
+/* FUNCION CONECTAR A BASE D DATOS */
+connectToDatabase(); 
 
 
   /* MIDDLEWARE MANEJO D ERRORES */
@@ -101,13 +100,46 @@ app.get('/loggerTest', (req, res) => {
 });
 
 
-  /* CONFIGURA NUEVO USUARIO Y CONTRASEÑA */
+  /* INTERFAZ SWAGGER */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
+  /* CREDENCIALES (YA FUNCIONA) */
 const username = "lautarojdiaz";
 const password = "sevienela7ma";
 
 
-  /* CADENA CONEXION CON LAS CREDENCIALES */
-const uri = `mongodb+srv://${username}:${password}@cluster0.smqncp0.mongodb.net/?retryWrites=true&w=majority`;
+  /* CONEXION MongoDB ATLAS */
+const atlasURI = 'mongodb+srv://lautarojdiaz:sevienela7ma@cluster0.smqncp0.mongodb.net/ecommerce';
+
+
+  /* INSTANCIA CLIENTE D MongoDB */
+const atlasClient = new MongoClient(atlasURI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+
+  /* CONECTA A LA BASE DE DATOS */
+async function connectToAtlasDatabase() {
+  try {
+    await atlasClient.connect();
+    console.log('Conexión a MongoDB Atlas establecida');
+    const database = atlasClient.db("ecommerce"); 
+    const collection = database.collection("producto"); 
+
+    const document = await collection.findOne({}); 
+
+    if (document) {
+      console.log('Consulta exitosa:', document);
+    } else {
+      console.log('No se encontraron documentos en la colección.');
+    }
+  } catch (error) {
+    console.error('Error de conexión:', error);
+  }
+}
+
+
+  /* FUNCION CONECTA A MongoDB ATLAS */
+connectToAtlasDatabase();
 
 
   /* ESTRATEGIA DE REGISTRO */
@@ -173,7 +205,7 @@ const jwtOptions = {
 };
 
 
-  /* PASSPORT CON jwtOptions */
+/* PASSPORT CON jwtOptions */
 passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
   try {
     const user = await userModel.findById(jwtPayload.id);

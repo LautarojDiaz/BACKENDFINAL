@@ -1,8 +1,7 @@
 const mongoose = require('mongoose');
 
-const Ticket = mongoose.model('Ticket', ticketSchema);
 
-/* ESQUEMA Y MODELO */
+  /* ESQUEMA Y MODELO */
 const ticketSchema = new mongoose.Schema({
   title: String,
   description: String,
@@ -17,8 +16,10 @@ const ticketSchema = new mongoose.Schema({
   },
 });
 
+const Ticket = mongoose.model('Ticket', ticketSchema);
 
-/* EXPORTA EL MODELO Y LA CONEXIÓN EN UN OBJETO */
+
+  /* EXPORTA EL MODELO Y LA CONEXIÓN EN UN OBJETO */
 module.exports = {
   Ticket,
   connectToDatabase: function () {
@@ -36,3 +37,6 @@ module.exports = {
     });
   },
 };
+
+
+module.exports = {Ticket,connectToDatabase: function() {}};
