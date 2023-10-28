@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const path = require('path');
 const session = require('express-session');
 const http = require('http');
@@ -28,7 +29,7 @@ const userModel = require('../src/models/userModel');
 const swaggerSpec = require('../swagger');
 const swaggerUi = require('swagger-ui-express');
 const cartRoutes = require('../src/routes/cartRoutes');
-const productRoutes = require('../src/routes/productRoutes');
+
 
 require('dotenv').config();
 

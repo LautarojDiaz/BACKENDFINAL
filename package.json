@@ -8,9 +8,6 @@
     "debug": "nodemon src/app.js",
     "generate-swagger": "node generate-swagger.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "bootstrap": "^5.3.1",
@@ -33,7 +30,14 @@
     "winston": "^3.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "chai": "^4.3.10",
+    "chai-http": "^4.4.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3"
   },
-  "type": "commonjs"
+  "type": "commonjs",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

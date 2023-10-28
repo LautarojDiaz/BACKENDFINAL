@@ -1,31 +1,22 @@
 const mongoose = require('mongoose');
 
 
-  /* ESQUEMA DEL CARRITO */
-  const cartSchema = new mongoose.Schema({
-    userId: {
+  /* ESQUEMA D CARRITO */
+const cartSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  products: [
+    {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', 
+      ref: 'Product',
       required: true,
     },
-    products: [
-      {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Product', 
-          required: true,
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-          min: 1,
-        },
-      },
-    ],
-  });
+  ],
+});
 
-
-  /* MODELO CART */
 const Cart = mongoose.model('Cart', cartSchema);
 
 module.exports = Cart;
