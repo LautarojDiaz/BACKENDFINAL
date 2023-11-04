@@ -22,21 +22,22 @@ const { Ticket, connectToDatabase } = require('../src/controllers/db');
 const ticketRoutes = require('./routes/ticketRoutes');
 const errorDictionary = require('../src/utils/errorDictionary');
 const { CustomError } = require('../src/middleware/errorHandler');
-const { ExtractJwt } = require('passport-jwt');
 const { checkAdmin } = require('../src/middleware/authorization');
 const { devLogger, prodLogger } = require('../logger');
 const userModel = require('../src/models/userModel');
 const swaggerSpec = require('../swagger');
 const swaggerUi = require('swagger-ui-express');
-const cartRoutes = require('../src/routes/cartRoutes');
 
+const cartRoutes = require('../src/routes/cartRoutes');
+const JwtStrategy = require('passport-jwt').Strategy;
+const { ExtractJwt } = require('passport-jwt'); 
 
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
-const PORT = process.env.PORT || 3870;
+const PORT = process.env.PORT || 4000;
 
 require('dotenv').config();
 
@@ -49,17 +50,6 @@ console.log('Antes de conectar a MongoDB');
 
 /* FUNCION CONECTAR A BASE D DATOS */
 connectToDatabase(); 
-
-
-  /* MIDDLEWARE MANEJO D ERRORES */
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  if (err instanceof CustomError) {
-    res.status(err.code).json({ error: err.message });
-  } else {
-    res.status(500).json({ error: '¡Algo salió mal!', title: 'Error Interno del Servidor' });
-  }
-});
 
 
   /* MIDDLEWARE PARA MANEJO D ERRORES */
@@ -105,7 +95,21 @@ app.get('/loggerTest', (req, res) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
-  /* CREDENCIALES (YA FUNCIONA) */
+  /* OPCIONES SWAGGER JSDoc */
+const options = {
+  definition: {
+    openapi: '3.0.0', // Especifica la versión de OpenAPI
+    info: {
+      title: 'API de Mi Aplicación', // El nombre de tu API
+      version: '1.0.0', // La versión de tu API
+      description: 'Documentación de la API de Mi Aplicación', // Descripción de tu API
+    },
+  },
+  apis: ['./routes/*.js'], // Especifica la ubicación de tus archivos que contienen comentarios Swagger.
+};
+
+ 
+  /* CREDENCIALES */
 const username = "lautarojdiaz";
 const password = "sevienela7ma";
 
@@ -204,6 +208,34 @@ const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: 'contraseña1234',
 };
+
+
+passport.use(new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
+  // Aquí debes implementar la lógica para validar y buscar al usuario en tu base de datos.
+  // jwtPayload contiene la información del token JWT, como el usuario y otros datos.
+
+  // Ejemplo de búsqueda de usuario en una base de datos (esto puede variar según tu modelo de datos):
+  const user = await User.findById(jwtPayload.sub);
+
+  if (user) {
+    // Si se encuentra un usuario, puedes autenticarlo.
+    return done(null, user);
+  } else {
+    // Si no se encuentra un usuario, puedes indicar que la autenticación falló.
+    return done(null, false);
+  }
+}));
+
+// Luego, puedes usar Passport para proteger tus rutas, por ejemplo:
+app.get('/ruta-protegida', passport.authenticate('jwt', { session: false }), (req, res) => {
+  // Esta ruta solo será accesible para usuarios autenticados con un token JWT válido.
+  res.json({ message: 'Ruta protegida' });
+});
+
+
+
+
+
 
 
 /* PASSPORT CON jwtOptions */

@@ -14,7 +14,7 @@ const options = {
       description: 'Documentación de la API de Mi Proyecto Final.',
     },
   },
-  apis: [swaggerConfig.modules[0].routes, swaggerConfig.modules[1].routes], // Agrega las rutas de los módulos
+  apis: [swaggerConfig.modules[0].routes, swaggerConfig.modules[1].routes], 
 };
 
 const swaggerSpec = swaggerJSDoc(options);

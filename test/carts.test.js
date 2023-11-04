@@ -1,15 +1,15 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../src/app'); 
+const app = require('../src/app');
 const should = chai.should();
 
 chai.use(chaiHttp);
 
 describe('Cart API', () => {
-  it('Deberia conseguir todos los carritos', (done) => {
+  it('Debería conseguir todos los carritos', (done) => {
     chai
       .request(app)
-      .get('/carts')
+      .get('/api/carts') 
       .end((err, res) => {
         res.should.have.status(200);
         res.body.should.be.a('array');
@@ -17,10 +17,10 @@ describe('Cart API', () => {
       });
   });
 
-  it('Deberia crear nuevo carrito', (done) => {
+  it('Debería crear un nuevo carrito', (done) => {
     chai
       .request(app)
-      .post('/carts')
+      .post('/api/carts') 
       .send({ userId: 1 }) 
       .end((err, res) => {
         res.should.have.status(201);

@@ -4,12 +4,12 @@ module.exports = {
       {
         name: 'Productos',
         description: 'Módulo para administrar productos.',
-        routes: './src/routes/productRoutes.js', // Ruta de tus rutas de productos
+        routes: './src/routes/productRoutes.js', 
       },
       {
         name: 'Carrito',
         description: 'Módulo para administrar carritos.',
-        routes: './src/routes/cartRoutes.js', // Ruta de tus rutas de carrito
+        routes: './src/routes/cartRoutes.js',
       },
     ],
   };

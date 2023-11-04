@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 
-
-  /* ESQUEMA D CARRITO */
 const cartSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -17,6 +15,4 @@ const cartSchema = new mongoose.Schema({
   ],
 });
 
-const Cart = mongoose.model('Cart', cartSchema);
-
-module.exports = Cart;
+module.exports = mongoose.models.Cart || mongoose.model('Cart', cartSchema);
