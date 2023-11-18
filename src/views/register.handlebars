@@ -1,16 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Registro</title>
-</head>
-<body>
+<link rel="stylesheet" href="../styles.css">
+<header>
+    <div></div>
+    <h1>Crea tu cuenta</h1>
+    <div></div>
+</header>
+<main>
+    <form action="" method="post" id="registerForm" class="form">
+        <div class="formOrder">
+            <p class="formText">Nombre</p> <input type="text" name="first_name">
+            <p class="formText">Apellido</p> <input type="text" name="last_name">
+            <p class="formText">Edad</p> <input type="number" name="age">
+            <p class="formText">Correo electrónico</p> <input type="email" name="email">
+            <p class="formText">Contraseña</p> <input type="password" name="password">
+        </div>
+        <button type="submit" class="submit">Crear cuenta</button>
+    </form>
+    <div class="switch">
+        <p>Inicia sesión <a href="/login">aqui</a></p>
+    </div>
+</main>
 
-  <form action="/register" method="POST">
->
-    <button type="submit">Registrarse</button>
-    <a href="/auth/github">Registrarse con GitHub</a>.
-  </form>
-
-
-</body>
-</html>

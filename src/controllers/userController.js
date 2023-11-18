@@ -1,21 +1,24 @@
 const UserModel = require('../models/userModel');
+const upload = require('../config/multerConfig');
+const multer = require('multer');
 
-
-    /* CAMBIO ROL D USUARIO */
-exports.changeUserRole = async (req, res) => {
-  const { uid, newRole } = req.params;
-
-  if (newRole !== 'user' && newRole !== 'premium') {
-    return res.status(400).json({ message: 'Rol no válido' });
+  /* RESTABLECER CONTRASEÑA */
+const requestPasswordReset = async (req, res) => {
+  try {
+    return res.status(200).json({ message: 'Solicitud de restablecimiento de contraseña exitosa' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Error al procesar la solicitud de restablecimiento de contraseña' });
   }
-
-  const user = await UserModel.findById(uid);
-  if (!user) {
-    return res.status(404).json({ message: 'Usuario no encontrado' });
-  }
-
-  user.role = newRole;
-  await user.save();
-
-  return res.status(200).json({ message: `Rol de usuario cambiado a ${newRole}` });
 };
+
+  /* CAMBIAR ROL USUARIO  */
+const changeUserRole = async (req, res) => {
+};
+
+
+  /* SUBID D DOCUMENTOS AL USUARIO X SU ID */
+const uploadDocuments = async (req, res) => {
+};
+
+module.exports = {requestPasswordReset,changeUserRole,uploadDocuments};
