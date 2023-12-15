@@ -1,22 +1,29 @@
-<link rel="stylesheet" href="../styles.css">
-<header>
-    <div></div>
-    <h1>Crea tu cuenta</h1>
-    <div></div>
-</header>
-<main>
-    <form action="" method="post" id="registerForm" class="form">
-        <div class="formOrder">
-            <p class="formText">Nombre</p> <input type="text" name="first_name">
-            <p class="formText">Apellido</p> <input type="text" name="last_name">
-            <p class="formText">Edad</p> <input type="number" name="age">
-            <p class="formText">Correo electrónico</p> <input type="email" name="email">
-            <p class="formText">Contraseña</p> <input type="password" name="password">
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <h2 class="text-center mt-3">Formulario de Registro <strong>- Val di Sole -</strong></h2>
+      <form action='/auth/register' method='POST'>
+        <div class="form-group mb-3">
+          <input type='text' class="form-control" name='firstName' placeholder='First Name' />
         </div>
-        <button type="submit" class="submit">Crear cuenta</button>
-    </form>
-    <div class="switch">
-        <p>Inicia sesión <a href="/login">aqui</a></p>
+        <div class="form-group mb-3">
+          <input type='text' class="form-control" name='lastName' placeholder='Last Name' />
+        </div>
+        <div class="form-group mb-3">
+          <input type='text' class="form-control" name='email' placeholder='Email' />
+        </div>
+        <div class="form-group mb-3">
+          <input type='number' class="form-control" name='age' placeholder="Age" />
+        </div>
+        <div class="form-group mb-3">
+          <input type='password' class="form-control" name='password' placeholder='Password' />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Register</button>
+      </form>
+      <p class="text-center mt-3">
+        <a href='/auth/login'>
+        ¿Ya tienes una cuenta? Login</a>
+      </p>
     </div>
-</main>
-
+  </div>
+</div>

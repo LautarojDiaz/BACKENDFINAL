@@ -1,16 +1,16 @@
-<link rel="stylesheet" href="../styles.css">
-<header>
-    <a href="/">Home</a>
-    <h1>CoderChat</h1>
-    <div>Tu email es <span id="user">{{user.email}}</span></div>
-</header>
-<main>
-    <div id="chatZone">
-    </div>
-    <div id="messageZone">
-        <input type="text" id="chatBox">
-        <button onclick="sendMessage()">|></button>
-    </div>
-</main>
+{{!-- RENDER msgs DESDE EL BACKEND --}}
+<div class="emit-msg" id="emit-msg">
+    <p class="user-name" >User:</p>
+    <input type="email" id="user-emit">
+    <p class="msg-emit" >Mensaje:</p>
+    <input type="text" id="msg-emit">
+    <button onclick="sendMsg()">Enviar</button>
+</div>
 
-<script src="../controllers/ChatController.js"></script>
+<div class="div-msg" id="div-msg">
+    cargando mgs
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/index.js"></script>
+

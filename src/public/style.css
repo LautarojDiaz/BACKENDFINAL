@@ -1,0 +1,88 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+
+.section-home{
+    max-width: 1440px;
+    margin: auto;
+}
+
+.div-card{
+    display: flex;
+    flex-direction: column;
+    /* flex-wrap: wrap;
+    justify-content: center; */
+}
+
+.form-container {
+    max-width: 500px;
+}
+
+.div-msg {
+    margin: 20px;
+    border: 1px solid black;
+}
+
+.nav-list {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    list-style: none;
+}
+
+.nav-list-li{
+    margin: 10px;
+    padding: 2px;
+    /* border: 1px solid grey; */
+    /* border-bottom: 1px solid grey; */
+    border-right: 1px solid grey;
+    /* border-radius: 4px; */
+}
+
+.nav-list-a{
+    color: black;
+    text-decoration: none;
+}
+/* Styles products.handlebars */
+
+.div-products-handle{
+    background-color: white;
+    /* margin: 40px;     */
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.a-products-handle{
+    color: white;
+}
+
+.img-products-handle{
+    width: 24px;
+}
+
+.gitHub-img {
+    width: 40px;
+}
+
+.banner-image {
+    max-width: 1440px;
+}
+.div-banner{
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 50px;
+
+}
+
+/* FAIL LOGIN */
+.fail-login, .fail-register, .send-message, .password-reset-success{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

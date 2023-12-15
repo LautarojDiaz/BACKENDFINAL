@@ -1,31 +1,72 @@
-<link rel="stylesheet" href="../styles.css">
-<header>
-  <a href="/">Home</a>
-  <h1>Cart ID {{cart._id}}</h1>
-  <div>
-    {{#if isLogin}}
-      <a href="/user">Bienvenido {{user.first_name}} {{user.last_name}}</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../public/style.css">
+  <title>ECOMERCE</title>
+</head>
+<body>
+<br>
+  <div class="d-flex flex-column justify-content-around align-items-center">
+    <div class="d-flex flex-direction-row justify-content-around align-items-center">
+      <h1 style="margin-right: 20px;"> Carrito de Compras </h1>
+      <a href="/api/products" class="btn btn-primary"> << Volver </a>
+    </div>
+    
+    {{ log 1 }}
+    {{ log prodToCart }}
+    {{ log 2 }}
+
+    {{#if message}}
+      <p>{{message}}</p>
     {{else}}
-      <a href="/login">Inicia sesión aquí</a>
+      {{#each prodToCart}}
+        <div class="card mb-3" style="">
+          <div class="row g-0">
+            <div class="col-md-4">
+              <img src="{{product.thumbnail}}" class="img-fluid rounded-start" alt="...">
+            </div>
+            <div class="col-md-8">
+              <div class="card-body">
+                <h6 class="card-title">Producto: {{product.title}}</h6>
+                <p class="card-text">Precio por Unidad: u$d {{product.price}}</p>
+                <p class="card-text">Cantidad: {{quantity}}</p>
+                
+                <div class="input-sm mb-3">
+                  <div class="col-3">
+                    <input type="number" id="quantityInput" class="form-control" value="{{quantity}}" min="1">
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="updateQuantity('{{product._id}}')">Actualizar Cantidad</button>
+                <button class="btn btn-danger" onclick="deleteProduct('{{product._id}}')">Eliminar</button>
+
+                <!-- Mostrar el total por producto -->
+                <p class="card-text">Total por Producto: u$d{{total}}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      {{/each}}
+      <div class="d-flex flex-column align-items-center justify-content-around">
+        <h3>Total del Carrito: u$d {{cartTotal}}</h3>
+        <br>
+        <button class="btn btn-danger" onclick="deleteProductsInCart()"> >>Vaciar Carrito<< </button>
+        <br>
+        <a href="/api/carts/checkout/{{cart}}" class="btn btn-primary">Finalizar la Compra >></a>
+        <br>
+        <a href="/api/products" class="btn btn-primary"> << Añadir más productos </a>
+      </div>
+
+      </div>
+      <br>
+      <br>
+      <br>
+      <br>
     {{/if}}
   </div>
-  
-</header>
-<main>
-    <div id="productsList">
-        {{#each cart.products}}
-            <div class="product">
-                <div style="display: grid; place-content: center;">
-                    <img src="{{_id.thumbnails}}" alt="{{_id.title}}" style="aspect-ratio: 1; width: 200px; object-fit: cover;"/>
-                </div>
-                <h2>Title: {{_id.title}}</h2>
-                <h2>Price: ${{_id.price}}</h2>
-                <p>{{_id.description}}</p>
-                <p>{{_id.quantity}}</p>
-            </div>
-        {{/each}}
-    </div>
-    <form action="/api/carts/{{cart._id}}/purchase" method="post">
-        <button type="submit">Comprar productos</button>
-    </form>
-</main>
+</body>
+</html>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
+<script src="/js/carts.js"></script>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <title>Detalles del Producto</title>
+  <style>
+    .mw-450 {
+      max-width: 450px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center">Detalles del Producto</h1>
+    <br>
+    <div class="row">
+      <div class="col-md-6 m-auto text-center">
+        <img src="{{product.thumbnail}}" class="img-fluid" alt="imágen principal del producto">
+      </div>
+      <div class="col-md-6">
+        <h2>{{product.title}}</h2>
+        <br>
+        <p class="mw-450">{{product.description}}</p>
+        <p> <strong>Precio: </strong> u$d {{product.price}}</p>
+        <p> <strong>Categoría: </strong> {{product.category}}</p>
+        <p>Stock Disponible: {{product.stock}} </p>
+        <button type="submit" class="btn btn-primary" onclick="addProductToCart('{{product._id}}')">Añadir al carrito</button>
+      </div>
+    </div>
+    <br>
+    <div class="text-center">
+      <a href="/api/products" class="btn btn-primary"><< continuar comprando</a>
+      <a class="btn btn-primary" href="/api/carts/view-cart">Finalizar compra >></a>
+    </div>
+    <br>
+    <br>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/js/product.js"></script>
+</body>
+</html>

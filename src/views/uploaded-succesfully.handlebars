@@ -1,0 +1,14 @@
+<div class="container mt-5 d-flex flex-column justify-content-center align-items-center">
+    <div class="d-flex flex-column justify-content-center align-items-center" >
+        <h2>Documento Cargado con Éxito</h2>
+        <p>Tu documento se ha cargado correctamente.</p>
+        <p>Documentos cargados: {{ userDocumentCount }}</p>
+        {{#if changeRoleFalse }}
+        <p>Documentos faltantes: {{ userRegresive }}</p>
+        {{/if}}
+    </div>
+        <br>
+        <a href='/api/users/{{ uid }}/uploadDocument' class="btn btn-primary">Añadir nuevo documento</a>
+        <br>
+        <a href="/auth/perfil" class="btn btn-primary">Volver al Perfil</a>
+</div>
